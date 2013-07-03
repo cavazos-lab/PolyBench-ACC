@@ -69,7 +69,7 @@ OpenCL:
 3. Run "make" in target folder(s) to generate executable(s)
 4. Run the generated .exe file(s).
 
-HMPP (in folder HMPPDefaultAndOptimized):
+HMPP:
 1. Change to bash shell if not currently in it.
 2. Set up PATH and LD_LIBRARY_PATH environment variables to point to CUDA/OpenCL installation 
 3. Set up HMPP environment variables with source hmpp-env.sh command in {HMPP_INSTALLATION}/bin folder 
