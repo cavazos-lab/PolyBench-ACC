@@ -61,7 +61,7 @@ void kernel_atax(int nx, int ny,
 		 DATA_TYPE POLYBENCH_1D(tmp,NX,nx))
 {
   int i, j;
-
+  #pragma scop
   #pragma acc data copyout(y) copyin(A,x) create(tmp)
   {
     #pragma acc parallel
@@ -82,6 +82,7 @@ void kernel_atax(int nx, int ny,
 	}
     }
   }
+  #pragma endscop
 }
 
 

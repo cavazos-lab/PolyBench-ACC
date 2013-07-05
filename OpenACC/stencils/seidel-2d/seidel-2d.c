@@ -58,7 +58,8 @@ void kernel_seidel_2d(int tsteps,
 {
   int t, i, j;
 
-  #pragma acc data
+  #pragma scop
+  #pragma acc data copy(A)
   {
     #pragma acc parallel
     {
@@ -72,6 +73,7 @@ void kernel_seidel_2d(int tsteps,
 		       + A[i+1][j-1] + A[i+1][j] + A[i+1][j+1])/9.0;
     }
   }
+  #pragma endscop
 }
 
 

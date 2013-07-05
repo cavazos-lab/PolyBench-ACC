@@ -62,8 +62,8 @@ void kernel_cholesky(int n,
   int i, j, k;
 
   DATA_TYPE x;
-
-  #pragma acc data copy(A)
+  #pragma scop
+  #pragma acc data copy(A) copyin (p)
   {
     #pragma acc parallel
     {
@@ -86,6 +86,7 @@ void kernel_cholesky(int n,
 	}
     }
   }
+  #pragma endscop
 }
 
 

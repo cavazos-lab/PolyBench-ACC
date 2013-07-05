@@ -70,8 +70,8 @@ void kernel_durbin(int n,
 		   DATA_TYPE POLYBENCH_1D(out,N,n))
 {
   int i, k;
-
-  #pragma acc data copyin(r) copyout(out) copy(alpha,beta,sum,y)
+  #pragma scop
+  #pragma acc data copyin(y,sum,alpha,beta,r) copyout(out)
   {
     y[0][0] = r[0];
     beta[0] = 1;
@@ -97,6 +97,7 @@ void kernel_durbin(int n,
 	out[i] = y[i][_PB_N-1];
     }
   }
+  #pragma endscop
 }
 
 

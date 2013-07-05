@@ -70,8 +70,8 @@ void kernel_bicg(int nx, int ny,
 		 DATA_TYPE POLYBENCH_1D(r,NX,nx))
 {
   int i, j;
-
-  #pragma acc data copyout(s,q) copyin(A,r)
+  #pragma scop
+  #pragma acc data copyout(s,q) copyin(A,r,p)
   {
     #pragma acc parallel
     {
@@ -91,7 +91,7 @@ void kernel_bicg(int nx, int ny,
 	}
     }
   }
-
+  #pragma endscop
 }
 
 

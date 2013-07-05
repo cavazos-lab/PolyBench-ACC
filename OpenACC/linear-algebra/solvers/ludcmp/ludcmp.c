@@ -68,8 +68,9 @@ void kernel_ludcmp(int n,
   int i, j, k;
 
   DATA_TYPE w;
-
-  #pragma acc data copy(A,b,x,y)
+  
+  #pragma scop
+  #pragma acc data copy(x) copyin(A,b,y)
   {
     #pragma acc parallel
     {
@@ -81,7 +82,6 @@ void kernel_ludcmp(int n,
 	  for (j = i+1; j <= _PB_N; j++)
 	    {
 	      w = A[j][i];
-	      #pragma acc loop
 	      for (k = 0; k < i; k++)
 		w = w- A[j][k] * A[k][i];
 	      A[j][i] = w / A[i][i];
@@ -90,7 +90,6 @@ void kernel_ludcmp(int n,
 	  for (j = i+1; j <= _PB_N; j++)
 	    {
 	      w = A[i+1][j];
-	      #pragma acc loop
 	      for (k = 0; k <= i; k++)
 		w = w  - A[i+1][k] * A[k][j];
 	      A[i+1][j] = w;
@@ -118,6 +117,7 @@ void kernel_ludcmp(int n,
 	}
     }
   }
+  #pragma endscop
 }
 
 

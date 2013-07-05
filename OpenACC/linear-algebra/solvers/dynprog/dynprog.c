@@ -55,8 +55,9 @@ void kernel_dynprog(int tsteps, int length,
   int iter, i, j, k;
 
   DATA_TYPE out_l = 0;
-
-  #pragma acc data copyout(c,sum_c) copyin(W)
+  
+  #pragma scop
+  #pragma acc data create(sum_c) copyin(W,c)
   {
     #pragma acc parallel
     {
@@ -83,6 +84,7 @@ void kernel_dynprog(int tsteps, int length,
 	}
     }
   }
+  #pragma endscop
   *out = out_l;
 }
 

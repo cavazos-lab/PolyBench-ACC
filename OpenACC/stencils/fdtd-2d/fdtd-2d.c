@@ -76,7 +76,7 @@ void kernel_fdtd_2d(int tmax,
 		    DATA_TYPE POLYBENCH_1D(_fict_,TMAX,tmax))
 {
   int t, i, j;
-
+  #pragma scop
   #pragma acc data copy(ey,ex,hz) copyin(_fict_)
   {
     #pragma acc parallel
@@ -105,6 +105,7 @@ void kernel_fdtd_2d(int tmax,
 	}
     }
   }
+  #pragma endscop
 }
 
 

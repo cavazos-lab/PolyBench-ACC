@@ -83,7 +83,7 @@ void print_array(int cz,
 		 DATA_TYPE POLYBENCH_3D(Hz,CZ+1,CYM+1,CXM+1,cz+1,cym+1,cxm+1))
 {
   int i, j, k;
-
+  
   for (i = 0; i <= cz; i++)
     for (j = 0; j <= cym; j++)
       for (k = 0; k <= cxm; k++) {
@@ -122,16 +122,18 @@ void kernel_fdtd_apml(int cz,
 {
   int iz, iy, ix;
 
-#pragma acc data \
-  copyin(Ax,Ry,Ex,Ey,czm,cxmh,cxph,cymh,cyph) \
-  copy(clf,Hz,Bza) create(tmp)
+  #pragma scop
+  
+  #pragma acc data                                      \
+    create(clf,tmp)				        \
+    copyin(Ax,Ry,Ex,Ey,Hz,czm,czp,cxmh,cxph,cymh,cyph)	\
+    copyout(Bza,Ex,Ey,Hz)
   {
     #pragma acc parallel
     {
       #pragma acc loop
       for (iz = 0; iz < _PB_CZ; iz++)
 	{
-	  #pragma acc loop
 	  for (iy = 0; iy < _PB_CYM; iy++)
 	    {
 	      #pragma acc loop
@@ -170,8 +172,7 @@ void kernel_fdtd_apml(int cz,
 	}
     }
   }
-#pragma endscop
-
+  #pragma endscop
 }
 
 

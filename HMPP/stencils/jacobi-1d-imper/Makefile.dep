@@ -1,0 +1,3 @@
+jacobi-1d-imper.o: jacobi-1d-imper.c ../../utilities/polybench.h \
+ jacobi-1d-imper.h
+polybench.o: ../../utilities/polybench.c

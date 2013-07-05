@@ -71,7 +71,7 @@ void kernel_symm(int ni, int nj,
 {
   int i, j, k;
   DATA_TYPE acc;
-
+  #pragma scop
   #pragma acc data copyin(A,B) copyout(C)
   {
     #pragma acc parallel
@@ -90,9 +90,9 @@ void kernel_symm(int ni, int nj,
 	      }
 	    C[i][j] = beta * C[i][j] + alpha * A[i][i] * B[i][j] + alpha * acc;
 	  }
-    }
+      }
   }
-
+  #pragma endscop
 }
 
 

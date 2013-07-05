@@ -56,7 +56,7 @@ void kernel_floyd_warshall(int n,
 			   DATA_TYPE POLYBENCH_2D(path,N,N,n,n))
 {
   int i, j, k;
-
+  #pragma scop
   #pragma acc data copy(path)
   {
     #pragma acc parallel
@@ -72,6 +72,7 @@ void kernel_floyd_warshall(int n,
 	}
     }
   }
+  #pragma endscop
 }
 
 

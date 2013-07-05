@@ -66,7 +66,8 @@ void kernel_reg_detect(int niter, int maxgrid, int length,
 {
   int t, i, j, cnt;
 
-  #pragma acc data copyout(diff,sum_diff,mean,path) copyin(sum_tang)
+  #pragma scop
+  #pragma acc data copy(path) copyin(sum_tang,mean) create(diff,sum_diff)
   {
     #pragma acc parallel
     {
@@ -102,6 +103,7 @@ void kernel_reg_detect(int niter, int maxgrid, int length,
 	}
     }
   }
+  #pragma endscop
 }
 
 int main(int argc, char** argv)
@@ -117,7 +119,7 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(path, DATA_TYPE, MAXGRID, MAXGRID, maxgrid, maxgrid);
   POLYBENCH_3D_ARRAY_DECL(diff, DATA_TYPE, MAXGRID, MAXGRID, LENGTH, maxgrid, maxgrid, length);
   POLYBENCH_3D_ARRAY_DECL(sum_diff, DATA_TYPE, MAXGRID, MAXGRID, LENGTH, maxgrid, maxgrid, length);
-
+  
   /* Initialize array(s). */
   init_array (maxgrid,
 	      POLYBENCH_ARRAY(sum_tang),

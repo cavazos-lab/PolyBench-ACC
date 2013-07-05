@@ -62,7 +62,7 @@ void kernel_trmm(int ni,
 		 DATA_TYPE POLYBENCH_2D(B,NI,NI,ni,ni))
 {
   int i, j, k;
-
+  #pragma scop
   #pragma acc data copyin(A) copy(B)
   {
     #pragma acc parallel
@@ -76,6 +76,7 @@ void kernel_trmm(int ni,
 	    B[i][j] += alpha * A[i][k] * B[j][k];
     }
   }
+  #pragma endscop
 }
 
 

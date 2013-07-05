@@ -70,8 +70,8 @@ void kernel_mvt(int n,
 		DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
   int i, j;
-
-  #pragma acc data copyin(A,y_1,y_2) copy(x1,x2)
+  #pragma scop
+  #pragma acc data copy(x1,x2) copyin(A,y_1,y_2)
   {
     #pragma acc parallel
     {
@@ -87,6 +87,7 @@ void kernel_mvt(int n,
 	  x2[i] = x2[i] + A[j][i] * y_2[j];
     }
   }
+  #pragma endscop
 }
 
 

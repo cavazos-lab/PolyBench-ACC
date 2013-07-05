@@ -70,7 +70,7 @@ void kernel_syr2k(int ni, int nj,
 		  DATA_TYPE POLYBENCH_2D(B,NI,NJ,ni,nj))
 {
   int i, j, k;
-
+  #pragma scop
   #pragma acc data copy(C) copyin(A,B)
   {
     #pragma acc parallel
@@ -92,6 +92,7 @@ void kernel_syr2k(int ni, int nj,
 	    }
     }
   }
+  #pragma endscop
 }
 
 

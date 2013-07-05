@@ -73,8 +73,8 @@ void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
 		DATA_TYPE POLYBENCH_2D(G,NI,NL,ni,nl))
 {
   int i, j, k;
-
-  #pragma acc data copyin (A,B,C,D) create (E,F) copyout (G)
+  #pragma scop
+  #pragma acc data copyin(A,B,C,D) create(E,F) copyout(G)
   {
     #pragma acc parallel
     {

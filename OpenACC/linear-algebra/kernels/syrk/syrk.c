@@ -66,7 +66,7 @@ void kernel_syrk(int ni, int nj,
 		 DATA_TYPE POLYBENCH_2D(A,NI,NJ,ni,nj))
 {
   int i, j, k;
-
+  #pragma scop
   #pragma acc data copyin(A) copy(C)
   {
     #pragma acc parallel
@@ -85,6 +85,7 @@ void kernel_syrk(int ni, int nj,
 	    C[i][j] += alpha * A[i][k] * A[j][k];
     }
   }
+  #pragma endscop
 }
 
 

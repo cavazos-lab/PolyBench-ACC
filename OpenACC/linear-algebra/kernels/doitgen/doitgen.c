@@ -63,8 +63,8 @@ void kernel_doitgen(int nr, int nq, int np,
 		    DATA_TYPE POLYBENCH_3D(sum,NR,NQ,NP,nr,nq,np))
 {
   int r, q, p, s;
-
-  #pragma acc data copy(A) copyout(sum) copyin(C4)
+  #pragma scop
+  #pragma acc data copy(A) copyin(C4) create(sum)
   {
     #pragma acc parallel
     {
@@ -72,10 +72,10 @@ void kernel_doitgen(int nr, int nq, int np,
       for (r = 0; r < _PB_NR; r++)
 	for (q = 0; q < _PB_NQ; q++) 
 	  {
+	    #pragma acc loop
 	    for (p = 0; p < _PB_NP; p++)
 	      {
 		sum[r][q][p] = 0;
-                #pragma acc loop
 		for (s = 0; s < _PB_NP; s++)
 		  sum[r][q][p] = sum[r][q][p] + A[r][q][s] * C4[s][p];
 	      }
@@ -85,6 +85,7 @@ void kernel_doitgen(int nr, int nq, int np,
 	}
     }
   }
+  #pragma endscop
 }
 
 int main(int argc, char** argv)

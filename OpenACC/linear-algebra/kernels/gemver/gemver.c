@@ -86,8 +86,8 @@ void kernel_gemver(int n,
 		   DATA_TYPE POLYBENCH_1D(z,N,n))
 {
   int i, j;
-
-  #pragma acc data copy(A,x,w) copyin(u1,v1,u2,v2,y,z)
+  #pragma scop
+  #pragma acc data copy(w) copyin(A,x,u1,v1,u2,v2,y,z)
   {
     #pragma acc parallel
     {
@@ -111,6 +111,7 @@ void kernel_gemver(int n,
 	  w[i] = w[i] +  alpha * A[i][j] * x[j];
     }
   }
+  #pragma endscop
 }
 
 

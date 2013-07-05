@@ -72,9 +72,8 @@ void kernel_correlation(int m, int n,
 
 #define sqrt_of_array_cell(x,j) sqrt(x[j])
 
-#pragma acc data				\
-  copyin (data),				\
-  copyout (mean, stddev, symmat)
+  #pragma scop
+  #pragma acc data create (mean,stddev) copyin (data) copyout (symmat)
   {
     /* Determine mean of column vectors of input data matrix */
     #pragma acc parallel
@@ -132,6 +131,7 @@ void kernel_correlation(int m, int n,
 	}
     }
   }
+  #pragma endscop
   symmat[_PB_M-1][_PB_M-1] = 1.0;
 }
 

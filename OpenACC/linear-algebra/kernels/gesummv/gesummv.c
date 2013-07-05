@@ -71,8 +71,8 @@ void kernel_gesummv(int n,
 		    DATA_TYPE POLYBENCH_1D(y,N,n))
 {
   int i, j;
-
-  #pragma acc data copyin(A) create(tmp) copyout(y)
+  #pragma scop
+  #pragma acc data copyin(A,B,x) create(tmp) copyout(y)
   {
     #pragma acc parallel
     {
@@ -91,6 +91,7 @@ void kernel_gesummv(int n,
 	}
     }
   }
+  #pragma endscop
 }
 
 

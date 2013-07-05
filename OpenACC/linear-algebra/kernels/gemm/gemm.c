@@ -71,24 +71,24 @@ void kernel_gemm(int ni, int nj, int nk,
 		 DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj))
 {
   int i, j, k;
-
-  #pragma acc data copyin(alpha,beta,A,B) copy(C)
+  #pragma scop
+  #pragma acc data copyin(A,B) copy(C)
   {
     #pragma acc parallel
     {
       /* C := alpha*A*B + beta*C */
       #pragma acc loop
       for (i = 0; i < _PB_NI; i++)
+	#pragma acc loop
 	for (j = 0; j < _PB_NJ; j++)
 	  {
 	    C[i][j] *= beta;
-	    #pragma acc loop
 	    for (k = 0; k < _PB_NK; ++k)
 	      C[i][j] += alpha * A[i][k] * B[k][j];
 	  }
     }
   }
-
+  #pragma endscop
 }
 
 

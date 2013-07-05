@@ -77,8 +77,8 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
 		DATA_TYPE POLYBENCH_2D(D,NI,NL,ni,nl))
 {
   int i, j, k;
-  
-  #pragma acc data copyin (A, B, C), create (tmp), copyout (D)
+  #pragma scop
+  #pragma acc data copyin (A,B,C), create (tmp), copyout (D)
   {
     /* D := alpha*A*B*C + beta*D */
     #pragma acc parallel
@@ -101,9 +101,9 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
 	  for (k = 0; k < _PB_NJ; ++k)
 	    D[i][j] += tmp[i][k] * C[k][j];
 	}
-     }
-}
-
+    }
+  }
+  #pragma endscop
 }
 
 

@@ -80,7 +80,7 @@ void kernel_gramschmidt(int ni, int nj,
   int i, j, k;
 
   DATA_TYPE nrm;
-
+  #pragma scop
   #pragma acc data copy(A,Q,R)
   {
     #pragma acc parallel
@@ -104,6 +104,7 @@ void kernel_gramschmidt(int ni, int nj,
 	}
     }
   }
+  #pragma endscop
 }
 
 

@@ -62,7 +62,8 @@ void kernel_jacobi_1d_imper(int tsteps,
 {
   int t, i, j;
 
-  #pragma acc data copy(A,B)
+  #pragma scop
+  #pragma acc data copy(A) copyin(B)
   {
     #pragma acc parallel
     {
@@ -77,6 +78,7 @@ void kernel_jacobi_1d_imper(int tsteps,
 	}
     }
   }
+  #pragma endscop
 }
 
 

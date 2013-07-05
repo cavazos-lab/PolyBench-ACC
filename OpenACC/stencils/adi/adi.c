@@ -66,7 +66,7 @@ void kernel_adi(int tsteps,
 {
   int t, i1, i2;
 
-#pragma acc data copy(X,B) copyin(A)
+#pragma acc data copy(X) copyin(A,B)
   {
     #pragma acc parallel
     {

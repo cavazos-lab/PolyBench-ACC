@@ -56,8 +56,8 @@ void kernel_lu(int n,
 	       DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
   int i, j, k;
-
-  #pragma acc data
+  #pragma scop
+  #pragma acc data copy(A)
   {
     #pragma acc parallel
     {
@@ -74,6 +74,7 @@ void kernel_lu(int n,
 	}
     }
   }
+  #pragma endscop
 }
 
 

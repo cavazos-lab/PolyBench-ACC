@@ -61,8 +61,8 @@ void kernel_trisolv(int n,
 		    DATA_TYPE POLYBENCH_1D(c,N,n))
 {
   int i, j;
-
-  #pragma acc data copyin(A,c) copyout(x)
+  #pragma scop
+  #pragma acc data copy(x) copyin(A,c)
   {
     #pragma acc parallel
     {
@@ -77,6 +77,7 @@ void kernel_trisolv(int n,
 	}
     }
   }
+  #pragma endscop
 }
 
 

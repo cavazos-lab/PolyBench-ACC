@@ -62,9 +62,10 @@ void kernel_covariance(int m, int n,
 		       DATA_TYPE POLYBENCH_1D(mean,M,m))
 {
   int i, j, j1, j2;
-
+  
+  #pragma scop
   /* Determine mean of column vectors of input data matrix */
-  #pragma acc data copyin (data), copyout (mean, symmat)
+  #pragma acc data copyin(data) create(mean) copyout(symmat)
   {
     #pragma acc parallel
     {
@@ -88,17 +89,17 @@ void kernel_covariance(int m, int n,
       /* Calculate the m * m covariance matrix. */
       #pragma acc loop
       for (j1 = 0; j1 < _PB_M; j1++)
-        #pragma acc loop
+	#pragma acc loop
 	for (j2 = j1; j2 < _PB_M; j2++)
 	  {
 	    symmat[j1][j2] = 0.0;
-            #pragma acc loop
 	    for (i = 0; i < _PB_N; i++)
 	      symmat[j1][j2] += data[i][j1] * data[i][j2];
 	    symmat[j2][j1] = symmat[j1][j2];
 	  }
     }
   }
+  #pragma endscop
 }
 
 int main(int argc, char** argv)
