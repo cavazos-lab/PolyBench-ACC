@@ -78,17 +78,19 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
 {
   int i, j, k;
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp kernel acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet allocate, args[tmp].size={ni,nj}
-  #pragma hmpp codelet advancedload, args[A].size={ni,nk}
-  #pragma hmpp codelet advancedload, args[B].size={nk,nj}
-  #pragma hmpp codelet advancedload, args[C].size={nl,nj}
-  #pragma hmpp codelet allocate, args[D].size={ni,nl}
+  #pragma hmpp kernel allocate, &
+  #pragma hmpp & args[A].size={ni,nk}, &
+  #pragma hmpp & args[B].size={nk,nj}, &
+  #pragma hmpp & args[C].size={nl,nj}, &
+  #pragma hmpp & args[D].size={ni,nl}, &
+  #pragma hmpp & args[tmp].size={ni,nj}
+  #pragma hmpp kernel advancedload, args[A;B;C;ni;nj;nl;nk;alpha;beta]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[tmp;A;B;C;D].transfer=manual, asynchronous
+  #pragma hmpp kernel region, args[*].transfer=manual, target=OPENCL, asynchronous
   {
     /* D := alpha*A*B*C + beta*D */
     for (i = 0; i < _PB_NI; i++)
@@ -106,13 +108,13 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
 	    D[i][j] += tmp[i][k] * C[k][j];
 	}
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp kernel synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[D]
+  #pragma hmpp kernel delegatedstore, args[D]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp kernel release
   #pragma endscop
 }
 

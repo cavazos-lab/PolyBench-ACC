@@ -20,7 +20,7 @@ $(EXE) : $(SRC)
 	$(HMPP) $(HMPPFLAGS) $(CC) $(CFLAGS) $(INCPATHS) $^ -o $@
 
 clean :
-	-rm -vf __hmpp* -vf $(EXE) *~ 
+	-rm -vf kernel* -vf $(EXE) *~ 
 
 veryclean : clean
 	-rm -vf $(DEPS)
