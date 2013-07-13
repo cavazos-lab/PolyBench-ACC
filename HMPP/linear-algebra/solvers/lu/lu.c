@@ -57,13 +57,22 @@ void kernel_lu(int n,
 {
   int i, j, k;
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp lu acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A].size={n}
+  #pragma hmpp lu allocate, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[A].size={n}
+  
+  #pragma hmpp lu advancedload, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[A]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A].transfer=manual, asynchronous
+  #pragma hmpp lu region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (k = 0; k < _PB_N; k++)
       {
@@ -74,13 +83,13 @@ void kernel_lu(int n,
 	    A[i][j] = A[i][j] - A[i][k] * A[k][j];
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp lu synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[A]
+  #pragma hmpp lu delegatedstore, args[A]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp lu release
   #pragma endscop
 }
 

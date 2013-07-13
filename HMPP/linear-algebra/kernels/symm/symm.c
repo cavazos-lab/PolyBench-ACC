@@ -73,15 +73,23 @@ void kernel_symm(int ni, int nj,
   DATA_TYPE acc;
   
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp symm acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet allocate, args[C].size={ni,nj}
-  #pragma hmpp codelet advancedload, args[A].size={nj,nj}
-  #pragma hmpp codelet advancedload, args[B].size={ni,nj}
+  #pragma hmpp symm allocate, &
+  #pragma hmpp & args[ni;nj;alpha;beta], &
+  #pragma hmpp & args[B;C].size={ni,nj}, &
+  #pragma hmpp & args[A].size={nj,nj}, &
+  
+  #pragma hmpp symm advancedload, &
+  #pragma hmpp & args[ni;nj;alpha;beta], &
+  #pragma hmpp & args[A;B;C].size={ni,nj}
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;B;C].transfer=manual, asynchronous
+  #pragma hmpp symm region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   { 
     /*  C := alpha*A*B + beta*C, A is symetric */
     for (i = 0; i < _PB_NI; i++)
@@ -98,13 +106,13 @@ void kernel_symm(int ni, int nj,
 	  }
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp symm synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[C]
+  #pragma hmpp symm delegatedstore, args[C]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp symm release
   #pragma endscop
 
 }

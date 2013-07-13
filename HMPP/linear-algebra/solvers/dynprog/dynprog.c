@@ -42,7 +42,6 @@ void print_array(DATA_TYPE out)
     fprintf (stderr, "\n");
 }
 
-
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
 static
@@ -55,17 +54,25 @@ void kernel_dynprog(int tsteps, int length,
     int iter, i, j, k;
 
     DATA_TYPE out_l = 0;
-
+    
     #pragma scop
-    #pragma hmpp codelet acquire
+    #pragma hmpp dynprog acquire
     // timing start
     // data transfer start
-    #pragma hmpp codelet allocate, args[c].size={length,length}
-    #pragma hmpp codelet allocate, args[sum_c].size={length,length,length}
-    #pragma hmpp codelet advancedload, args[W].size={length, length}
+    #pragma hmpp dynprog allocate, &
+    #pragma hmpp & args[tsteps;length;out_l], &
+    #pragma hmpp & args[W;c].size={length,length}, &
+    #pragma hmpp & args[sum_c].size={length,length,length}
+    
+    #pragma hmpp dynprog advancedload, &
+    #pragma hmpp & args[tsteps;length;out_l], &
+    #pragma hmpp & args[c;W]
     // data transfer stop
     // kernel start
-    #pragma hmpp codelet region, args[c;sum_c;W].transfer=manual, asynchronous
+    #pragma hmpp dynprog region, &
+    #pragma hmpp & args[*].transfer=manual, &
+    #pragma hmpp & target=CUDA, &
+    #pragma hmpp & asynchronous
     {
 	for (iter = 0; iter < _PB_TSTEPS; iter++)
 	{
@@ -85,13 +92,13 @@ void kernel_dynprog(int tsteps, int length,
 	    out_l += c[0][_PB_LENGTH - 1];
 	}
     }
-    #pragma hmpp codelet synchronize
+    #pragma hmpp dynprog synchronize
     // kernel stop
     // data transfer start
-    // nothing to transfer (out_1 implicitly transferred)
+    #pragma hmpp dynprog delegatedstore, args[out_l]
     // data transfer stop
     // timing stop
-    #pragma hmpp codelet release
+    #pragma hmpp dynprog release
     #pragma endscop
     
     *out = out_l;

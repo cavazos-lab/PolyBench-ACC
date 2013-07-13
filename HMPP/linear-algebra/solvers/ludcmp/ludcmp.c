@@ -71,14 +71,23 @@ void kernel_ludcmp(int n,
   b[0] = 1.0;
   
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp ludcmp acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A].size={n+1,n+1}
-  #pragma hmpp codelet advancedload, args[b;x;y].size={n+1}
+  #pragma hmpp ludcmp allocate, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[A].size={n+1,n+1}, &
+  #pragma hmpp & args[b;x;y].size={n+1}
+  
+  #pragma hmpp ludcmp advancedload, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[A;b;x;y]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;b;x;y].transfer=manual, asynchronous
+  #pragma hmpp ludcmp region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (i = 0; i < _PB_N; i++)
       {
@@ -114,13 +123,13 @@ void kernel_ludcmp(int n,
 	x[_PB_N - 1 - i] = w / A[_PB_N - 1 - (i)][_PB_N - 1-(i)];
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp ludcmp synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[x]
+  #pragma hmpp ludcmp delegatedstore, args[x]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp ludcmp release
   #pragma endscop
     
 }

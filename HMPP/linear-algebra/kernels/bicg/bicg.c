@@ -75,14 +75,21 @@ void kernel_bicg(int nx, int ny,
   #pragma hmpp codelet acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A].size={nx,ny}
-  #pragma hmpp codelet advancedload, args[r].size={nx}
-  #pragma hmpp codelet advancedload, args[p].size={ny}
-  #pragma hmpp codelet allocate, args[s].size={ny}
-  #pragma hmpp codelet allocate, args[q].size={nx}
+  #pragma hmpp codelet allocate, &
+  #pragma hmpp & args[nx;ny], &
+  #pragma hmpp & args[A].size={nx,ny}, &
+  #pragma hmpp & args[s;p].size={ny}, &
+  #pragma hmpp & args[q;r].size={nx}
+  
+  #pragma hmpp codelet advancedload, &
+  #pragma hmpp & args[nx;ny], &
+  #pragma hmpp & args[A;r;p]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;s;q;p;r].transfer=manual, asynchronous
+  #pragma hmpp codelet region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (i = 0; i < _PB_NY; i++)
       s[i] = 0;

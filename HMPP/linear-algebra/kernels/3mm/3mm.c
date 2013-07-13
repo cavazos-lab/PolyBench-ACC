@@ -74,19 +74,28 @@ void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
 {
   int i, j, k;
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp mm3 acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A].size={ni,nk}
-  #pragma hmpp codelet advancedload, args[B].size={nk,nj}
-  #pragma hmpp codelet advancedload, args[C].size={nj,nm}
-  #pragma hmpp codelet advancedload, args[D].size={nm,nl}
-  #pragma hmpp codelet allocate, args[E].size={ni,nj}
-  #pragma hmpp codelet allocate, args[F].size={nj,nl}
-  #pragma hmpp codelet allocate, args[G].size={ni,nl}
+  #pragma hmpp mm3 allocate, &
+  #pragma hmpp & args[ni;nj;nk;nl;nm].size={ni,nk}, &
+  #pragma hmpp & args[A].size={ni,nk}, &
+  #pragma hmpp & args[B].size={nk,nj}, &
+  #pragma hmpp & args[C].size={nj,nm}, &
+  #pragma hmpp & args[D].size={nm,nl}, &
+  #pragma hmpp & args[E].size={ni,nj}, &
+  #pragma hmpp & args[F].size={nj,nl}, &
+  #pragma hmpp & args[G].size={ni,nl}
+  
+  #pragma hmpp mm3 advancedload, &
+  #pragma hmpp & args[ni;nj;nk;nl;nm], &
+  #pragma hmpp & args[A;B;C;D;E;F;G]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;B;C;D;E;F;G].transfer=manual, asynchronous
+  #pragma hmpp mm3 region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     /* E := A*B */
     for (i = 0; i < _PB_NI; i++)
@@ -113,13 +122,13 @@ void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
 	    G[i][j] += E[i][k] * F[k][j];
 	}
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp mm3 synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[G]
+  #pragma hmpp mm3 delegatedstore, args[G]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp mm3 release
   #pragma endscop
 
 }

@@ -57,27 +57,37 @@ void kernel_floyd_warshall(int n,
 {
   int i, j, k;
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp floydwarshall acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[path].size={n,n}
+  #pragma hmpp floydwarshall &
+  #pragma hmpp & allocate, args[n], &
+  #pragma hmpp & args[path].size={n,n}
+  
+  #pragma hmpp floydwarshall &
+  #pragma hmpp & advancedload, args[n], &
+  #pragma hmpp & args[path]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[path].transfer=manual, asynchronous
-  for (k = 0; k < _PB_N; k++)
+  #pragma hmpp floydwarshall region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
+  {
+    for (k = 0; k < _PB_N; k++)
     {
       for(i = 0; i < _PB_N; i++)
 	for (j = 0; j < _PB_N; j++)
 	  path[i][j] = path[i][j] < path[i][k] + path[k][j] ?
 	    path[i][j] : path[i][k] + path[k][j];
     }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp floydwarshall synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[path]
+  #pragma hmpp floydwarshall delegatedstore, args[path]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp floydwarshall release
   #pragma scop
 }
 

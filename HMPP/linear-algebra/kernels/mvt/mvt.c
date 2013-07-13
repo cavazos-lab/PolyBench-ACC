@@ -71,16 +71,24 @@ void kernel_mvt(int n,
 {
   int i, j;
   
-  #pragma acc data copyin(A,y_1,y_2) copy(x1,x2)
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp mvt acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A].size={n,n}
-  #pragma hmpp codelet advancedload, args[x1;x2;y_1;y_2].size={n}
+  #pragma hmpp mvt allocate, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[A].size={n,n}, &
+  #pragma hmpp & args[x1;x2;y_1;y_2].size={n}
+
+  #pragma hmpp mvt advancedload, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[x1;x2;y_1;y_2;A]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;y_1;y_2;x1;x2].transfer=manual, asynchronous
+  #pragma hmpp mvt region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (i = 0; i < _PB_N; i++)
       for (j = 0; j < _PB_N; j++)
@@ -89,13 +97,13 @@ void kernel_mvt(int n,
       for (j = 0; j < _PB_N; j++)
 	x2[i] = x2[i] + A[j][i] * y_2[j];
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp mvt synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[x1;x2]
+  #pragma hmpp mvt delegatedstore, args[x1;x2]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp mvt release
   #pragma endscop
 
 }

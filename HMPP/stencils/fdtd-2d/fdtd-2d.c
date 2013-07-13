@@ -78,14 +78,23 @@ void kernel_fdtd_2d(int tmax,
   int t, i, j;
   
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp fdtd2d acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[ex;ey;hz].size={nx,ny}
-  #pragma hmpp codelet advancedload, args[_fict_].size={tmax}
+  #pragma hmpp fdtd2d allocate, &
+  #pragma hmpp & args[tmax;nx;ny], &
+  #pragma hmpp & args[ex;ey;hz].size={nx,ny}, &
+  #pragma hmpp & args[_fict_].size={tmax}
+  
+  #pragma hmpp fdtd2d advancedload, &
+  #pragma hmpp & args[tmax;nx;ny], &
+  #pragma hmpp & args[ex;ey;hz;_fict_]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[ex;ey;hz;_fict_].transfer=manual, asynchronous
+  #pragma hmpp fdtd2d region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (t = 0; t < _PB_TMAX; t++)
       {
@@ -103,13 +112,13 @@ void kernel_fdtd_2d(int tmax,
 					 ey[i+1][j] - ey[i][j]);
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp fdtd2d synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[ex;ey;hz]
+  #pragma hmpp fdtd2d delegatedstore, args[ex;ey;hz]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp fdtd2d release
   #pragma endscop
 
 }

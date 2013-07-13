@@ -76,12 +76,21 @@ void kernel_correlation(int m, int n,
   #pragma hmpp codelet acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[data].size={m,n}
-  #pragma hmpp codelet allocate, args[symmat].size={m,m}
-  #pragma hmpp codelet allocate, args[mean;stddev].size={m}
+  #pragma hmpp codelet allocate, &
+  #pragma hmpp & args[m;n;float_n], &
+  #pragma hmpp & args[data].size={m,n}, &
+  #pragma hmpp & args[symmat].size={m,m}, &
+  #pragma hmpp & args[mean;stddev].size={m}
+  
+  #pragma hmpp codelet advancedload, &
+  #pragma hmpp & args[m;n;float_n], &
+  #pragma hmpp & args[data]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[data;symmat;mean;stddev].transfer=manual, asynchronous
+  #pragma hmpp codelet region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     /* Determine mean of column vectors of input data matrix */
     for (j = 0; j < _PB_M; j++)

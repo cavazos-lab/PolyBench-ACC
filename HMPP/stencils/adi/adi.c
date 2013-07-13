@@ -66,13 +66,22 @@ void kernel_adi(int tsteps,
 {
   int t, i1, i2;
   
-  #pragma hmpp codelet acquire
+  #pragma hmpp adi acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A;B;X].size={n,n}
+  #pragma hmpp adi allocate,  &
+  #pragma hmpp & args[tsteps;n], &
+  #pragma hmpp & args[A;B;X].size={n,n}
+  
+  #pragma hmpp adi advancedload,  &
+  #pragma hmpp & args[tsteps;n], &
+  #pragma hmpp & args[X;A;B]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;B;X].transfer=manual, asynchronous
+  #pragma hmpp adi region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (t = 0; t < _PB_TSTEPS; t++)
       {
@@ -99,13 +108,13 @@ void kernel_adi(int tsteps,
 	    X[_PB_N-2-i1][i2] = (X[_PB_N-2-i1][i2] - X[_PB_N-i1-3][i2] * A[_PB_N-3-i1][i2]) / B[_PB_N-2-i1][i2];
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp adi synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[X]
+  #pragma hmpp adi delegatedstore, args[X]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp adi release
 }
 
 

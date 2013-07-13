@@ -59,13 +59,22 @@ void kernel_seidel_2d(int tsteps,
   int t, i, j;
   
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp seidel2d acquire
   // timing start
   // data transfer start
-#pragma hmpp codelet advancedload, args[A].size={n,n}
+  #pragma hmpp seidel2d allocate, &
+  #pragma hmpp & args[n;tsteps], &
+  #pragma hmpp & args[A].size={n,n}
+  
+  #pragma hmpp seidel2d advancedload, &
+  #pragma hmpp & args[n;tsteps], &
+  #pragma hmpp & args[A]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A].transfer=manual, asynchronous
+  #pragma seidel2d region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (t = 0; t <= _PB_TSTEPS - 1; t++)
       for (i = 1; i<= _PB_N - 2; i++)
@@ -74,13 +83,13 @@ void kernel_seidel_2d(int tsteps,
 		     + A[i][j-1] + A[i][j] + A[i][j+1]
 		     + A[i+1][j-1] + A[i+1][j] + A[i+1][j+1])/9.0;
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp seidel2d synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[A]
+  #pragma hmpp seidel2d delegatedstore, args[A]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp seidel2d release
   #pragma endscop
 
   
