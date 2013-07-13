@@ -60,17 +60,26 @@ void kernel_cholesky(int n,
 		     DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
   int i, j, k;
-
   DATA_TYPE x;
-
   #pragma scop
-  #pragma hmpp codelet acquire
+
+  #pragma hmpp cholesky acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A].size={n}
+  #pragma hmpp cholesky allocate, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[A].size={n,n}, &
+  #pragma hmpp & args[p].size={n}
+
+  #pragma hmpp cholesky advancedload, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[p,A]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A].transfer=manual, asynchronous
+  #pragma hmpp cholesky region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (i = 0; i < _PB_N; ++i)
       {
@@ -87,13 +96,13 @@ void kernel_cholesky(int n,
 	  }
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp cholesky synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[A]
+  #pragma hmpp cholesky delegatedstore, args[A]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp cholesky release
   #pragma endscop
   
 }

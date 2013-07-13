@@ -78,17 +78,25 @@ void kernel_gramschmidt(int ni, int nj,
 			DATA_TYPE POLYBENCH_2D(Q,NI,NJ,ni,nj))
 {
   int i, j, k;
-
+  
   DATA_TYPE nrm;
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp gramschmidt acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A;Q].size={ni,nj}
-  #pragma hmpp codelet advancedload, args[R].size={nj,nj}
+  #pragma hmpp gramschmidt allocate, &
+  #pragma hmpp & args[ni;nj], &
+  #pragma hmpp & args[A;R;Q].size={ni,nj}
+  
+  #pragma hmpp gramschmidt advancedload, &
+  #pragma hmpp & args[ni;nj], &
+  #pragma hmpp & args[A;R;Q]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;R;Q].transfer=manual, asynchronous
+  #pragma hmpp gramschmidt region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (k = 0; k < _PB_NJ; k++)
       {
@@ -108,13 +116,13 @@ void kernel_gramschmidt(int ni, int nj,
 	  }
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp gramschmidt synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[A;R;Q]
+  #pragma hmpp gramschmidt delegatedstore, args[A;R;Q]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp gramschmidt release
   #pragma endscop
 }
 

@@ -64,15 +64,23 @@ void kernel_doitgen(int nr, int nq, int np,
 {
   int r, q, p, s;
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp doitgen acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A].size={nr,nq,np}
-  #pragma hmpp codelet advancedload, args[C4].size={np,np}
-  #pragma hmpp codelet allocate, args[sum].size={nr,nq,np}
+  #pragma hmpp doitgen allocate, &
+  #pragma hmpp & args[nr;nq;np], &
+  #pragma hmpp & args[A;sum].size={nr,nq,np}, &
+  #pragma hmpp & args[C4].size={np,np}
+  
+  #pragma hmpp doitgen advancedload, &
+  #pragma hmpp & args[nr;nq;np], &
+  #pragma hmpp & args[C4;A]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;C4;sum].transfer=manual, asynchronous
+  #pragma hmpp doitgen region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (r = 0; r < _PB_NR; r++)
       for (q = 0; q < _PB_NQ; q++) 
@@ -87,13 +95,13 @@ void kernel_doitgen(int nr, int nq, int np,
 	    A[r][q][p] = sum[r][q][p];
 	}
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp doitgen synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[A]
+  #pragma hmpp doitgen delegatedstore, args[A]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp doitgen release
   #pragma endscop
 }
 

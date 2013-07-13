@@ -64,15 +64,24 @@ void kernel_covariance(int m, int n,
   int i, j, j1, j2;
   
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp covariance acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[data].size={m,n}
-  #pragma hmpp codelet allocate, args[symmat].size={m,m}
-  #pragma hmpp codelet allocate, args[mean].size={m}
+  #pragma hmpp covariance allocate, &
+  #pragma hmpp & args[m;n;float_n], &
+  #pragma hmpp & args[data].size={m,n}, &
+  #pragma hmpp & args[symmat].size={m,m}, &
+  #pragma hmpp & args[mean].size={m}
+
+  #pragma hmpp covariance advancedload, &
+  #pragma hmpp & args[n;m;float_n], &
+  #pragma hmpp & args[data]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[data;symmat;mean].transfer=manual, asynchronous
+  #pragma hmpp covariance region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (j = 0; j < _PB_M; j++)
       {
@@ -97,13 +106,13 @@ void kernel_covariance(int m, int n,
 	  }
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp covariance synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[symmat]
+  #pragma hmpp covariance delegatedstore, args[symmat]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp covariance release
   #pragma endscop
   
 }

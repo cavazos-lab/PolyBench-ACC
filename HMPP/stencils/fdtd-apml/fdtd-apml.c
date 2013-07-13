@@ -123,18 +123,27 @@ void kernel_fdtd_apml(int cz,
   int iz, iy, ix;
   
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp fdtd acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet allocate, args[tmp].size={cym+1,cxm+1}
-  #pragma hmpp codelet advancedload, args[Ax;Ry;clf].size={cym+1,cym+1}
-  #pragma hmpp codelet advancedload, args[Bza;Ex;Ey;Hz].size={cz+1,cym+1,cxm+1}
-  #pragma hmpp codelet advancedload, args[czm;czp].size={cz+1}
-  #pragma hmpp codelet advancedload, args[cxmh;cxph].size={cxm+1}
-  #pragma hmpp codelet advancedload, args[cymh;cyph].size={cym+1}
+  #pragma hmpp fdtd allocate, &
+  #pragma hmpp & args[cz;cxm;cym;mui;ch] &
+  #pragma hmpp & args[tmp;clf].size={cym+1,cxm+1}, &
+  #pragma hmpp & args[Ax;Ry].size={cz+1,cym+1}, &
+  #pragma hmpp & args[Bza;Ex;Ey;Hz].size={cz+1,cym+1,cxm+1}, &
+  #pragma hmpp & args[czm;czp].size={cz+1}, &
+  #pragma hmpp & args[cxmh;cxph].size={cxm+1}, &
+  #pragma hmpp & args[cymh;cyph].size={cym+1}
+  
+  #pragma hmpp fdtd advancedload, &
+  #pragma hmpp & args[cz;cxm;cym;mui;ch] &
+  #pragma hmpp & args[Ax;Ry;Ex;Ey;Hz;czm;czp;cxmh;cxph;cymh;cyph]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[Ax;Ry;clf;tmp;Bza;Ex;Ey;Hz;czm;czp;cxmh;cxph;cymh;cyph].transfer=manual, asynchronous
+  #pragma hmpp fdtd region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (iz = 0; iz < _PB_CZ; iz++)
       {
@@ -173,13 +182,13 @@ void kernel_fdtd_apml(int cz,
 	  }
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp fdtd synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[Bza;Ex;Ey;Hz]
+  #pragma hmpp fdtd delegatedstore, args[Bza;Ex;Ey;Hz]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp fdtd release
   #pragma endscop
 
 }

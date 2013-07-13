@@ -71,18 +71,24 @@ void kernel_gesummv(int n,
 		    DATA_TYPE POLYBENCH_1D(y,N,n))
 {
   int i, j;
-
-  #pragma acc data copyin(A) create(tmp) copyout(y)
+  
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp gesummv acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[B;A].size={n,n}
-  #pragma hmpp codelet advancedload, args[x].size={n}
-  #pragma hmpp codelet allocate, args[tmp;y].size={n}
+  #pragma hmpp gesummv allocate, 
+  #pragma hmpp & args[B;A].size={n,n}, &
+  #pragma hmpp & args[x;y;tmp].size={n}
+  
+  #pragma hmpp gesummv advancedload, &
+  #pragma hmpp & args[n;alpha;beta], &
+  #pragma hmpp & args[A;B;x]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;B;tmp;x;y].transfer=manual, asynchronous
+  #pragma hmpp gesummv region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (i = 0; i < _PB_N; i++)
       {
@@ -96,13 +102,13 @@ void kernel_gesummv(int n,
 	y[i] = alpha * tmp[i] + beta * y[i];
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp gesummv synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[y]
+  #pragma hmpp gesummv delegatedstore, args[y]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp gesummv release
   #pragma endscop
 }
 

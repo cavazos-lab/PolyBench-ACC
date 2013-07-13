@@ -67,14 +67,23 @@ void kernel_reg_detect(int niter, int maxgrid, int length,
   int t, i, j, cnt;
   
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp regdetect acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[sum_tang;mean;path].size={maxgrid,maxgrid}
-  #pragma hmpp codelet allocate, args[diff;sum_diff].size={maxgrid,maxgrid,length}
+  #pragma hmpp regdetect allocate, &
+  #pragma hmpp & args[niter;length;maxgrid], &
+  #pragma hmpp & args[sum_tang;mean;path].size={maxgrid,maxgrid}, &
+  #pragma hmpp & args[diff;sum_diff].size={maxgrid,maxgrid,length}
+  
+  #pragma hmpp regdetect advancedload, &
+  #pragma hmpp & args[niter;length;maxgrid], &
+  #pragma hmpp & args[sum_tang;mean;path]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[sum_tang;mean;path;diff;sum_diff].transfer=manual, asynchronous
+  #pragma hmpp regdetect region,  &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (t = 0; t < _PB_NITER; t++)
       {
@@ -99,13 +108,13 @@ void kernel_reg_detect(int niter, int maxgrid, int length,
 	    path[j][i] = path[j - 1][i - 1] + mean[j][i];
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp regdetect synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[path]
+  #pragma hmpp regdetect delegatedstore, args[path]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp regdetect release
   #pragma endscop
 
 }

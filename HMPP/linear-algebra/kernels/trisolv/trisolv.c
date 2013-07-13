@@ -63,15 +63,23 @@ void kernel_trisolv(int n,
   int i, j;
   
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp trisolve acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A].size={n,n}
-  #pragma hmpp codelet advancedload, args[c].size={n}
-  #pragma hmpp codelet allocate, args[x].size={n}
+  #pragma hmpp trisolve allocate, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[x;c].size={n}, &
+  #pragma hmpp & args[A].size={n,n}
+  
+  #pragma hmpp trisolve advancedload, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[A;x;c]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;c;x].transfer=manual, asynchronous
+  #pragma hmpp trisolve region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (i = 0; i < _PB_N; i++)
       {
@@ -81,13 +89,13 @@ void kernel_trisolv(int n,
 	x[i] = x[i] / A[i][i];
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp trisolve synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[x]
+  #pragma hmpp trisolve delegatedstore, args[x]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp trisolve release
   #pragma endscop
 
 }

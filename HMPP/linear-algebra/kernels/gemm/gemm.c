@@ -73,15 +73,24 @@ void kernel_gemm(int ni, int nj, int nk,
   int i, j, k;
 
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp gemm acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[C].size={ni,nj}
-  #pragma hmpp codelet advancedload, args[A].size={ni,nk}
-  #pragma hmpp codelet advancedload, args[B].size={nk,nj}
+  #pragma hmpp gemm allocate, &
+  #pragma hmpp & args[ni;nj;nk;alpha;beta], &
+  #pragma hmpp & args[C].size={ni,nj}, &
+  #pragma hmpp & args[A].size={ni,nk}, &
+  #pragma hmpp & args[B].size={nk,nj}
+  
+  #pragma hmpp gemm advancedload, &
+  #pragma hmpp & args[ni;nj;nk;alpha;beta], &
+  #pragma hmpp & args[C;A;B]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;B;C].transfer=manual, asynchronous
+  #pragma hmpp gemm region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     /* C := alpha*A*B + beta*C */
     for (i = 0; i < _PB_NI; i++)
@@ -92,13 +101,13 @@ void kernel_gemm(int ni, int nj, int nk,
 	    C[i][j] += alpha * A[i][k] * B[k][j];
 	}
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp gemm synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[C]
+  #pragma hmpp gemm delegatedstore, args[C]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp gemm release
   #pragma endscop
 
 }

@@ -67,14 +67,23 @@ void kernel_syrk(int ni, int nj,
 {
   int i, j, k;
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp syrk acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A].size={ni,nj}
-  #pragma hmpp codelet advancedload, args[C].size={ni,ni}
+  #pragma hmpp syrk allocate, &
+  #pragma hmpp & args[ni;nj;alpha;beta], &
+  #pragma hmpp & args[A].size={ni,nj}, &
+  #pragma hmpp & args[C].size={ni,ni}
+  
+  #pragma hmpp syrk advancedload, &
+  #pragma hmpp & args[ni;nj;alpha;beta], &
+  #pragma hmpp & args[C;A]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;C].transfer=manual, asynchronous
+  #pragma hmpp syrk region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     /*  C := alpha*A*A' + beta*C */
     for (i = 0; i < _PB_NI; i++)
@@ -85,13 +94,13 @@ void kernel_syrk(int ni, int nj,
         for (k = 0; k < _PB_NJ; k++)
 	  C[i][j] += alpha * A[i][k] * A[j][k];
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp syrk synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[C]
+  #pragma hmpp syrk delegatedstore, args[C]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp syrk release
   #pragma endscop
 
 }

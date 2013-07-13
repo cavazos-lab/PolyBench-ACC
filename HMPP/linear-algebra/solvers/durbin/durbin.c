@@ -75,15 +75,23 @@ void kernel_durbin(int n,
   alpha[0] = r[0];
   
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp durbin acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[y;sum].size={n,n}
-  #pragma hmpp codelet advancedload, args[alpha;beta;r].size={n}
-  #pragma hmpp codelet allocate, args[out].size={n}
+  #pragma hmpp durbin allocate, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[alpha;beta;r].size={n}, &
+  #pragma hmpp & args[y;sum;out].size={n,n}
+  
+  #pragma hmpp durbin advancedload, &
+  #pragma hmpp & args[n], &
+  #pragma hmpp & args[y;sum;alpha;beta;r]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[y;sum;alpha;beta;r;out].transfer=manual, asynchronous
+  #pragma hmpp durbin region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (k = 1; k < _PB_N; k++)
       {
@@ -99,13 +107,13 @@ void kernel_durbin(int n,
     for (i = 0; i < _PB_N; i++)
       out[i] = y[i][_PB_N-1];
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp durbin synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[out]
+  #pragma hmpp durbin delegatedstore, args[out]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp durbin release
   #pragma endscop
 }
 

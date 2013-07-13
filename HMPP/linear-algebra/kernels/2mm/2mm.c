@@ -78,19 +78,26 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
 {
   int i, j, k;
   #pragma scop
-  #pragma hmpp kernel acquire
+  #pragma hmpp mm2 acquire
   // timing start
   // data transfer start
-  #pragma hmpp kernel allocate, &
+  #pragma hmpp mm2 allocate, &
+  #pragma hmpp & args[ni;nj;nk;nl;alpha;beta], &
   #pragma hmpp & args[A].size={ni,nk}, &
   #pragma hmpp & args[B].size={nk,nj}, &
   #pragma hmpp & args[C].size={nl,nj}, &
   #pragma hmpp & args[D].size={ni,nl}, &
   #pragma hmpp & args[tmp].size={ni,nj}
-  #pragma hmpp kernel advancedload, args[A;B;C;ni;nj;nl;nk;alpha;beta]
+  
+  #pragma hmpp mm2 advancedload, &
+  #pragma hmpp & args[ni;nj;nk;nl;alpha;beta], &
+  #pragma hmpp & args[A;B;C;D]
   // data transfer stop
-  // kernel start
-  #pragma hmpp kernel region, args[*].transfer=manual, target=OPENCL, asynchronous
+  // 2mm start
+  #pragma hmpp mm2 region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     /* D := alpha*A*B*C + beta*D */
     for (i = 0; i < _PB_NI; i++)
@@ -108,13 +115,13 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
 	    D[i][j] += tmp[i][k] * C[k][j];
 	}
   }
-  #pragma hmpp kernel synchronize
-  // kernel stop
+  #pragma hmpp mm2 synchronize
+  // 2mm stop
   // data transfer start
-  #pragma hmpp kernel delegatedstore, args[D]
+  #pragma hmpp mm2 delegatedstore, args[D]
   // data transfer stop
   // timing stop
-  #pragma hmpp kernel release
+  #pragma hmpp mm2 release
   #pragma endscop
 }
 
@@ -146,7 +153,7 @@ int main(int argc, char** argv)
   /* Start timer. */
   polybench_start_instruments;
 
-  /* Run kernel. */
+  /* Run 2mm. */
   kernel_2mm (ni, nj, nk, nl,
 	      alpha, beta,
 	      POLYBENCH_ARRAY(tmp),

@@ -63,16 +63,24 @@ void kernel_atax(int nx, int ny,
   int i, j;
   
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp atax acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet allocate, args[tmp].size={nx}
-  #pragma hmpp codelet allocate, args[y].size={ny}
-  #pragma hmpp codelet advancedload, args[A].size={nx,ny}
-  #pragma hmpp codelet advancedload, args[x].size={ny}
+  #pragma hmpp atax allocate, &
+  #pragma hmpp & args[nx;ny], &
+  #pragma hmpp & args[A].size={nx,ny}, &
+  #pragma hmpp & args[x;y].size={ny}, &
+  #pragma hmpp & args[tmp].size={nx}
+  
+  #pragma hmpp atax advancedload, &
+  #pragma hmpp & args[nx;ny], &
+  #pragma hmpp & args[A;x]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;x;y;tmp].transfer=manual, asynchronous
+  #pragma hmpp atax region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (i = 0; i < _PB_NY; i++)
       y[i] = 0;
@@ -85,13 +93,13 @@ void kernel_atax(int nx, int ny,
 	  y[j] = y[j] + A[i][j] * tmp[i];
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp atax synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[y]
+  #pragma hmpp atax delegatedstore, args[y]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp atax release
   #pragma endscop
 }
 

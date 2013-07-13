@@ -63,13 +63,22 @@ void kernel_trmm(int ni,
 {
   int i, j, k;
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp trmm acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A;B].size={ni,ni}
+  #pragma hmpp trmm allocate, &
+  #pragma hmpp & args[alpha;ni], &
+  #pragma hmpp & args[A;B].size={ni,ni}
+  
+  #pragma hmpp trmm advancedload, &
+  #pragma hmpp & args[alpha;ni], &
+  #pragma hmpp & args[A;B]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;B].transfer=manual, asynchronous
+  #pragma hmpp trmm region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     /*  B := alpha*A'*B, A triangular */
     for (i = 1; i < _PB_NI; i++)
@@ -77,13 +86,13 @@ void kernel_trmm(int ni,
 	for (k = 0; k < i; k++)
 	  B[i][j] += alpha * A[i][k] * B[j][k];
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp trmm synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[B]
+  #pragma hmpp trmm delegatedstore, args[B]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp trmm release
   #pragma endscop
   
 }

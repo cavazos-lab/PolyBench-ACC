@@ -62,13 +62,22 @@ void kernel_jacobi_1d_imper(int tsteps,
 {
   int t, i, j;
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp jacobi1d acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A;B].size={n}
+  #pragma hmpp jacobi1d allocate, &
+  #pragma hmpp & args[tsteps;n], &
+  #pragma hmpp & args[A;B].size={n}
+  
+  #pragma hmpp jacobi1d advancedload, &
+  #pragma hmpp & args[tsteps;n], &
+  #pragma hmpp & args[A;B]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;B].transfer=manual, asynchronous
+  #pragma hmpp jacobi1d region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (t = 0; t < _PB_TSTEPS; t++)
       {
@@ -78,13 +87,13 @@ void kernel_jacobi_1d_imper(int tsteps,
 	  A[j] = B[j];
       }
   }
-  #pragma hmpp codelet synchronize
+  #pragma hmpp jacobi1d synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[A]
+  #pragma hmpp jacobi1d delegatedstore, args[A]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp jacobi1d release
   #pragma endscop
 }
 

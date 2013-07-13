@@ -87,15 +87,23 @@ void kernel_gemver(int n,
 {
   int i, j;
   #pragma scop
-  #pragma hmpp codelet acquire
+  #pragma hmpp gemver acquire
   // timing start
   // data transfer start
-  #pragma hmpp codelet advancedload, args[A].size={n,n}
-  #pragma hmpp codelet advancedload, args[x;w].size={n}
-  #pragma hmpp codelet allocate, args[u1;v1;u2;v2;y;z].size={n}
+  #pragma hmpp gemver allocate, &
+  #pragma hmpp & args[n;alpha;beta], &
+  #pragma hmpp & args[A].size={n,n}, &
+  #pragma hmpp & args[u1;v1;u2;v2;w;x;y;z].size={n}
+  
+  #pragma hmpp gemver advancedload, &
+  #pragma hmpp & args[n;alpha;beta], &
+  #pragma hmpp & args[A;u1;v1;u2;v2;w;x;y;z]
   // data transfer stop
   // kernel start
-  #pragma hmpp codelet region, args[A;u1;v1;u2;v2;w;x;y;z].transfer=manual, asynchronous
+  #pragma hmpp gemver region, &
+  #pragma hmpp & args[*].transfer=manual, &
+  #pragma hmpp & target=CUDA, &
+  #pragma hmpp & asynchronous
   {
     for (i = 0; i < _PB_N; i++)
       for (j = 0; j < _PB_N; j++)
@@ -110,13 +118,13 @@ void kernel_gemver(int n,
 	w[i] = w[i] +  alpha * A[i][j] * x[j];
   }
   
-  #pragma hmpp codelet synchronize
+  #pragma hmpp gemver synchronize
   // kernel stop
   // data transfer start
-  #pragma hmpp codelet delegatedstore, args[w]
+  #pragma hmpp gemver delegatedstore, args[w]
   // data transfer stop
   // timing stop
-  #pragma hmpp codelet release
+  #pragma hmpp gemver release
   #pragma endscop
 }
 
