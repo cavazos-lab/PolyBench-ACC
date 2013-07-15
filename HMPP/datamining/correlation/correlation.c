@@ -58,9 +58,9 @@ void print_array(int m,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-#pragma hmpp mm2 codelet, &
-#pragma hmpp & args[ni;nj;nk;nl;alpha;beta].transfer=atcall, &
-#pragma hmpp & args[A;B;C;D;tmp].transfer=manual, &
+#pragma hmpp correlation codelet, &
+#pragma hmpp & args[m;n;float_n].transfer=atcall, &
+#pragma hmpp & args[data_symmat;mean;stddev].transfer=manual, &
 #pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_correlation(int m, int n,
@@ -143,7 +143,7 @@ int main(int argc, char** argv)
   /* Initialize array(s). */
   init_array (m, n, &float_n, POLYBENCH_ARRAY(data));
   
-  #pragma hmpp advancedload, args[data]
+  #pragma hmpp correlation advancedload, args[data]
   
   /* Start timer. */
   polybench_start_instruments;
