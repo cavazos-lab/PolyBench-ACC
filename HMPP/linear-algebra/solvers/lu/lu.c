@@ -51,71 +51,57 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp lu codelet, &
+#pragma hmpp & args[n].transfer=atcall, &
+#pragma hmpp & args[A].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_lu(int n,
 	       DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
   int i, j, k;
-  #pragma scop
-  #pragma hmpp lu acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp lu allocate, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[A].size={n}
-  
-  #pragma hmpp lu advancedload, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[A]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp lu region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (k = 0; k < _PB_N; k++)
-      {
+  for (k = 0; k < _PB_N; k++)
+    {
+      for (j = k + 1; j < _PB_N; j++)
+	A[k][j] = A[k][j] / A[k][k];
+      for(i = k + 1; i < _PB_N; i++)
 	for (j = k + 1; j < _PB_N; j++)
-	  A[k][j] = A[k][j] / A[k][k];
-	for(i = k + 1; i < _PB_N; i++)
-	  for (j = k + 1; j < _PB_N; j++)
-	    A[i][j] = A[i][j] - A[i][k] * A[k][j];
-      }
-  }
-  #pragma hmpp lu synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp lu delegatedstore, args[A]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp lu release
-  #pragma endscop
+	  A[i][j] = A[i][j] - A[i][k] * A[k][j];
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp lu acquire
+  
   /* Retrieve problem size. */
   int n = N;
 
   /* Variable declaration/allocation. */
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, N, N, n, n);
 
+  #pragma hmpp lu allocate, &
+  #pragma hmpp & args[A].size={n,n}, args[A].hostdata="A"
 
   /* Initialize array(s). */
   init_array (n, POLYBENCH_ARRAY(A));
 
+  #pragma hmpp lu advancedload, args[A]
+  
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp lu callsite
   kernel_lu (n, POLYBENCH_ARRAY(A));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
-
+  
+  #pragma hmpp lu delegatedstore, args[A]
+  
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(A)));
@@ -123,5 +109,7 @@ int main(int argc, char** argv)
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(A);
 
+  #pragma hmpp lu release
+  
   return 0;
 }

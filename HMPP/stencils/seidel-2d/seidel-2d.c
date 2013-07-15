@@ -51,53 +51,29 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp seidel2d codelet, &
+#pragma hmpp & args[tsteps;n].transfer=atcall, &
+#pragma hmpp & args[A].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_seidel_2d(int tsteps,
 		      int n,
 		      DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
   int t, i, j;
-  
-  #pragma scop
-  #pragma hmpp seidel2d acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp seidel2d allocate, &
-  #pragma hmpp & args[n;tsteps], &
-  #pragma hmpp & args[A].size={n,n}
-  
-  #pragma hmpp seidel2d advancedload, &
-  #pragma hmpp & args[n;tsteps], &
-  #pragma hmpp & args[A]
-  // data transfer stop
-  // kernel start
-  #pragma seidel2d region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (t = 0; t <= _PB_TSTEPS - 1; t++)
-      for (i = 1; i<= _PB_N - 2; i++)
-	for (j = 1; j <= _PB_N - 2; j++)
-	  A[i][j] = (A[i-1][j-1] + A[i-1][j] + A[i-1][j+1]
-		     + A[i][j-1] + A[i][j] + A[i][j+1]
-		     + A[i+1][j-1] + A[i+1][j] + A[i+1][j+1])/9.0;
-  }
-  #pragma hmpp seidel2d synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp seidel2d delegatedstore, args[A]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp seidel2d release
-  #pragma endscop
-
-  
+  for (t = 0; t <= _PB_TSTEPS - 1; t++)
+    for (i = 1; i<= _PB_N - 2; i++)
+      for (j = 1; j <= _PB_N - 2; j++)
+	A[i][j] = (A[i-1][j-1] + A[i-1][j] + A[i-1][j+1]
+		   + A[i][j-1] + A[i][j] + A[i][j+1]
+		   + A[i+1][j-1] + A[i+1][j] + A[i+1][j+1])/9.0;
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp seidel2d acquire
+
   /* Retrieve problem size. */
   int n = N;
   int tsteps = TSTEPS;
@@ -105,26 +81,34 @@ int main(int argc, char** argv)
   /* Variable declaration/allocation. */
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, N, N, n, n);
 
+  #pragma hmpp seidel2d allocate, args[A].size={n,n}, args[A].hostdata="A"
 
   /* Initialize array(s). */
   init_array (n, POLYBENCH_ARRAY(A));
+
+  #pragma hmpp seidel2d advancedload, args[A]
 
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp seidel2d callsite
   kernel_seidel_2d (tsteps, n, POLYBENCH_ARRAY(A));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp seidel2d delegatedstore, args[A]
+
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(A)));
-
+  
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(A);
+
+  #pragma hmpp seidel2d release
 
   return 0;
 }

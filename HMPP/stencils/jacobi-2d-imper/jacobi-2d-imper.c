@@ -55,6 +55,10 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp jacobi2d codelet, &
+#pragma hmpp & args[tsteps;n].transfer=atcall, &
+#pragma hmpp & args[A;B].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_jacobi_2d_imper(int tsteps,
 			    int n,
@@ -62,47 +66,22 @@ void kernel_jacobi_2d_imper(int tsteps,
 			    DATA_TYPE POLYBENCH_2D(B,N,N,n,n))
 {
   int t, i, j;
-  #pragma scop
-  #pragma hmpp jacobi2d acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp jacobi2d allocate, &
-  #pragma hmpp & args[tsteps;n], &
-  #pragma hmpp & args[A;B].size={n,n}
-  
-  #pragma hmpp jacobi2d advancedload, &
-  #pragma hmpp & args[tsteps;n], &
-  #pragma hmpp & args[A;B]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp jacobi2d region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (t = 0; t < _PB_TSTEPS; t++)
-      {
-	for (i = 1; i < _PB_N - 1; i++)
-	  for (j = 1; j < _PB_N - 1; j++)
-	    B[i][j] = 0.2 * (A[i][j] + A[i][j-1] + A[i][1+j] + A[1+i][j] + A[i-1][j]);
-	for (i = 1; i < _PB_N-1; i++)
-	  for (j = 1; j < _PB_N-1; j++)
-	    A[i][j] = B[i][j];
-      }
-  }
-  #pragma hmpp jacobi2d synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp jacobi2d delegatedstore, args[A]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp jacobi2d release
-  #pragma endscop
+  for (t = 0; t < _PB_TSTEPS; t++)
+    {
+      for (i = 1; i < _PB_N - 1; i++)
+	for (j = 1; j < _PB_N - 1; j++)
+	  B[i][j] = 0.2 * (A[i][j] + A[i][j-1] + A[i][1+j] + A[1+i][j] + A[i-1][j]);
+      for (i = 1; i < _PB_N-1; i++)
+	for (j = 1; j < _PB_N-1; j++)
+	  A[i][j] = B[i][j];
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp jacobi2d acquire
+
   /* Retrieve problem size. */
   int n = N;
   int tsteps = TSTEPS;
@@ -111,9 +90,14 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, N, N, n, n);
   POLYBENCH_2D_ARRAY_DECL(B, DATA_TYPE, N, N, n, n);
 
+  #pragma hmpp jacobi2d allocate, &
+  #pragma hmpp & args[A].size={n,n}, args[A].hostdata="A", &
+  #pragma hmpp & args[B].size={n,n}, args[B].hostdata="B"
 
   /* Initialize array(s). */
   init_array (n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
+
+  #pragma hmpp jacobi2d advancedload, args[A;B]
 
   /* Start timer. */
   polybench_start_instruments;
@@ -125,6 +109,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp jacobi2d delegatedstore, args[A]
+
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(A)));
@@ -132,6 +118,8 @@ int main(int argc, char** argv)
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(A);
   POLYBENCH_FREE_ARRAY(B);
+
+  #pragma hmpp jacobi2d release
 
   return 0;
 }

@@ -99,6 +99,10 @@ void print_array(int cz,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+  #pragma hmpp fdtd codelet, &
+  #pragma hmpp & args[cz;cxm;cym;mui;ch].transfer=atcall, &
+  #pragma hmpp & args[Ax;Ry;clf;tmp;Bza;Ex;Ey;Hz;czm;czp;cxmh;cxph;cymh;cyph].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_fdtd_apml(int cz,
 		      int cxm,
@@ -121,81 +125,49 @@ void kernel_fdtd_apml(int cz,
 		      DATA_TYPE POLYBENCH_1D(cyph,CYM+1,cym+1))
 {
   int iz, iy, ix;
-  
-  #pragma scop
-  #pragma hmpp fdtd acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp fdtd allocate, &
-  #pragma hmpp & args[cz;cxm;cym;mui;ch] &
-  #pragma hmpp & args[tmp;clf].size={cym+1,cxm+1}, &
-  #pragma hmpp & args[Ax;Ry].size={cz+1,cym+1}, &
-  #pragma hmpp & args[Bza;Ex;Ey;Hz].size={cz+1,cym+1,cxm+1}, &
-  #pragma hmpp & args[czm;czp].size={cz+1}, &
-  #pragma hmpp & args[cxmh;cxph].size={cxm+1}, &
-  #pragma hmpp & args[cymh;cyph].size={cym+1}
-  
-  #pragma hmpp fdtd advancedload, &
-  #pragma hmpp & args[cz;cxm;cym;mui;ch] &
-  #pragma hmpp & args[Ax;Ry;Ex;Ey;Hz;czm;czp;cxmh;cxph;cymh;cyph]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp fdtd region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (iz = 0; iz < _PB_CZ; iz++)
-      {
-	for (iy = 0; iy < _PB_CYM; iy++)
-	  {
-	    for (ix = 0; ix < _PB_CXM; ix++)
-	      {
-		clf[iz][iy] = Ex[iz][iy][ix] - Ex[iz][iy+1][ix] + Ey[iz][iy][ix+1] - Ey[iz][iy][ix];
-		tmp[iz][iy] = (cymh[iy] / cyph[iy]) * Bza[iz][iy][ix] - (ch / cyph[iy]) * clf[iz][iy];
-		Hz[iz][iy][ix] = (cxmh[ix] /cxph[ix]) * Hz[iz][iy][ix]
-		  + (mui * czp[iz] / cxph[ix]) * tmp[iz][iy]
-		  - (mui * czm[iz] / cxph[ix]) * Bza[iz][iy][ix];
-		Bza[iz][iy][ix] = tmp[iz][iy];
-	      }
-	    clf[iz][iy] = Ex[iz][iy][_PB_CXM] - Ex[iz][iy+1][_PB_CXM] + Ry[iz][iy] - Ey[iz][iy][_PB_CXM];
-	    tmp[iz][iy] = (cymh[iy] / cyph[iy]) * Bza[iz][iy][_PB_CXM] - (ch / cyph[iy]) * clf[iz][iy];
-	    Hz[iz][iy][_PB_CXM]=(cxmh[_PB_CXM] / cxph[_PB_CXM]) * Hz[iz][iy][_PB_CXM]
-	      + (mui * czp[iz] / cxph[_PB_CXM]) * tmp[iz][iy]
-	      - (mui * czm[iz] / cxph[_PB_CXM]) * Bza[iz][iy][_PB_CXM];
-	    Bza[iz][iy][_PB_CXM] = tmp[iz][iy];
-	    for (ix = 0; ix < _PB_CXM; ix++)
-	      {
-		clf[iz][iy] = Ex[iz][_PB_CYM][ix] - Ax[iz][ix] + Ey[iz][_PB_CYM][ix+1] - Ey[iz][_PB_CYM][ix];
-		tmp[iz][iy] = (cymh[_PB_CYM] / cyph[iy]) * Bza[iz][iy][ix] - (ch / cyph[iy]) * clf[iz][iy];
-		Hz[iz][_PB_CYM][ix] = (cxmh[ix] / cxph[ix]) * Hz[iz][_PB_CYM][ix]
-		  + (mui * czp[iz] / cxph[ix]) * tmp[iz][iy]
-		  - (mui * czm[iz] / cxph[ix]) * Bza[iz][_PB_CYM][ix];
-		Bza[iz][_PB_CYM][ix] = tmp[iz][iy];
-	      }
-	    clf[iz][iy] = Ex[iz][_PB_CYM][_PB_CXM] - Ax[iz][_PB_CXM] + Ry[iz][_PB_CYM] - Ey[iz][_PB_CYM][_PB_CXM];
-	    tmp[iz][iy] = (cymh[_PB_CYM] / cyph[_PB_CYM]) * Bza[iz][_PB_CYM][_PB_CXM] - (ch / cyph[_PB_CYM]) * clf[iz][iy];
-	    Hz[iz][_PB_CYM][_PB_CXM] = (cxmh[_PB_CXM] / cxph[_PB_CXM]) * Hz[iz][_PB_CYM][_PB_CXM]
-	      + (mui * czp[iz] / cxph[_PB_CXM]) * tmp[iz][iy]
-	      - (mui * czm[iz] / cxph[_PB_CXM]) * Bza[iz][_PB_CYM][_PB_CXM];
-	    Bza[iz][_PB_CYM][_PB_CXM] = tmp[iz][iy];
-	  }
-      }
-  }
-  #pragma hmpp fdtd synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp fdtd delegatedstore, args[Bza;Ex;Ey;Hz]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp fdtd release
-  #pragma endscop
-
+  for (iz = 0; iz < _PB_CZ; iz++)
+    {
+      for (iy = 0; iy < _PB_CYM; iy++)
+	{
+	  for (ix = 0; ix < _PB_CXM; ix++)
+	    {
+	      clf[iz][iy] = Ex[iz][iy][ix] - Ex[iz][iy+1][ix] + Ey[iz][iy][ix+1] - Ey[iz][iy][ix];
+	      tmp[iz][iy] = (cymh[iy] / cyph[iy]) * Bza[iz][iy][ix] - (ch / cyph[iy]) * clf[iz][iy];
+	      Hz[iz][iy][ix] = (cxmh[ix] /cxph[ix]) * Hz[iz][iy][ix]
+		+ (mui * czp[iz] / cxph[ix]) * tmp[iz][iy]
+		- (mui * czm[iz] / cxph[ix]) * Bza[iz][iy][ix];
+	      Bza[iz][iy][ix] = tmp[iz][iy];
+	    }
+	  clf[iz][iy] = Ex[iz][iy][_PB_CXM] - Ex[iz][iy+1][_PB_CXM] + Ry[iz][iy] - Ey[iz][iy][_PB_CXM];
+	  tmp[iz][iy] = (cymh[iy] / cyph[iy]) * Bza[iz][iy][_PB_CXM] - (ch / cyph[iy]) * clf[iz][iy];
+	  Hz[iz][iy][_PB_CXM]=(cxmh[_PB_CXM] / cxph[_PB_CXM]) * Hz[iz][iy][_PB_CXM]
+	    + (mui * czp[iz] / cxph[_PB_CXM]) * tmp[iz][iy]
+	    - (mui * czm[iz] / cxph[_PB_CXM]) * Bza[iz][iy][_PB_CXM];
+	  Bza[iz][iy][_PB_CXM] = tmp[iz][iy];
+	  for (ix = 0; ix < _PB_CXM; ix++)
+	    {
+	      clf[iz][iy] = Ex[iz][_PB_CYM][ix] - Ax[iz][ix] + Ey[iz][_PB_CYM][ix+1] - Ey[iz][_PB_CYM][ix];
+	      tmp[iz][iy] = (cymh[_PB_CYM] / cyph[iy]) * Bza[iz][iy][ix] - (ch / cyph[iy]) * clf[iz][iy];
+	      Hz[iz][_PB_CYM][ix] = (cxmh[ix] / cxph[ix]) * Hz[iz][_PB_CYM][ix]
+		+ (mui * czp[iz] / cxph[ix]) * tmp[iz][iy]
+		- (mui * czm[iz] / cxph[ix]) * Bza[iz][_PB_CYM][ix];
+	      Bza[iz][_PB_CYM][ix] = tmp[iz][iy];
+	    }
+	  clf[iz][iy] = Ex[iz][_PB_CYM][_PB_CXM] - Ax[iz][_PB_CXM] + Ry[iz][_PB_CYM] - Ey[iz][_PB_CYM][_PB_CXM];
+	  tmp[iz][iy] = (cymh[_PB_CYM] / cyph[_PB_CYM]) * Bza[iz][_PB_CYM][_PB_CXM] - (ch / cyph[_PB_CYM]) * clf[iz][iy];
+	  Hz[iz][_PB_CYM][_PB_CXM] = (cxmh[_PB_CXM] / cxph[_PB_CXM]) * Hz[iz][_PB_CYM][_PB_CXM]
+	    + (mui * czp[iz] / cxph[_PB_CXM]) * tmp[iz][iy]
+	    - (mui * czm[iz] / cxph[_PB_CXM]) * Bza[iz][_PB_CYM][_PB_CXM];
+	  Bza[iz][_PB_CYM][_PB_CXM] = tmp[iz][iy];
+	}
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp fdtd acquire
+
   /* Retrieve problem size. */
   int cz = CZ;
   int cym = CYM;
@@ -219,6 +191,22 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(cymh,DATA_TYPE,CYM+1,cym+1);
   POLYBENCH_1D_ARRAY_DECL(cyph,DATA_TYPE,CYM+1,cym+1);
 
+  #pragma hmpp fdtd allocate, &
+  #pragma hmpp & args[tmp].size={cym+1,cxm+1}, args[tmp].hostdata="tmp", &
+  #pragma hmpp & args[clf].size={cym+1,cxm+1}, args[clf].hostdata="clf", &
+  #pragma hmpp & args[Ax].size={cz+1,cym+1}, args[Ax].hostdata="Ax", &
+  #pragma hmpp & args[Ry].size={cz+1,cym+1}, args[Ry].hostdata="Ry", &
+  #pragma hmpp & args[Bza].size={cz+1,cym+1,cxm+1}, args[Bza].hostdata="Bza", &
+  #pragma hmpp & args[Ex].size={cz+1,cym+1,cxm+1}, args[Ex].hostdata="Ex", &
+  #pragma hmpp & args[Ey].size={cz+1,cym+1,cxm+1}, args[Ey].hostdata="Ey", &
+  #pragma hmpp & args[Hz].size={cz+1,cym+1,cxm+1}, args[Hz].hostdata="Hz", &
+  #pragma hmpp & args[czm].size={cz+1}, args[czm].hostdata="czm", &
+  #pragma hmpp & args[czp].size={cz+1}, args[czp].hostdata="czp", &
+  #pragma hmpp & args[cxmh].size={cxm+1}, args[cxmh].hostdata="cxmh", &
+  #pragma hmpp & args[cxph].size={cxm+1}, args[cxph].hostdata="cxph", &
+  #pragma hmpp & args[cymh].size={cym+1}, args[cymh].hostdata="cymh", &
+  #pragma hmpp & args[cyph].size={cym+1}, args[cyph].hostdata="cyph"
+
   /* Initialize array(s). */
   init_array (cz, cxm, cym, &mui, &ch,
   	      POLYBENCH_ARRAY(Ax),
@@ -233,10 +221,13 @@ int main(int argc, char** argv)
   	      POLYBENCH_ARRAY(cymh),
   	      POLYBENCH_ARRAY(cyph));
 
+  #pragma hmpp fdtd advancedload, args[Ax;Ry;Ex;Ey;Hz;czm;czp;cxmh;cxph;cymh;cyph]
+
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp fdtd callsite
   kernel_fdtd_apml (cz, cxm, cym, mui, ch,
   		    POLYBENCH_ARRAY(Ax),
   		    POLYBENCH_ARRAY(Ry),
@@ -257,6 +248,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp fdtd delegatedstore, args[Bza;Ex;Ey;Hz]
+  
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(cz, cxm, cym,
@@ -281,6 +274,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(cymh);
   POLYBENCH_FREE_ARRAY(cyph);
 
+  #pragma hmpp fdtd release
+  
   return 0;
 }
 

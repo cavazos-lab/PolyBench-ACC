@@ -66,6 +66,10 @@ void print_array(int nx,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp fdtd2d codelet, &
+#pragma hmpp & args[tmax;nx;ny].transfer=atcall, &
+#pragma hmpp & args[ex;ey;hz;_fict_].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_fdtd_2d(int tmax,
 		    int nx,
@@ -76,56 +80,28 @@ void kernel_fdtd_2d(int tmax,
 		    DATA_TYPE POLYBENCH_1D(_fict_,TMAX,tmax))
 {
   int t, i, j;
-  
-  #pragma scop
-  #pragma hmpp fdtd2d acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp fdtd2d allocate, &
-  #pragma hmpp & args[tmax;nx;ny], &
-  #pragma hmpp & args[ex;ey;hz].size={nx,ny}, &
-  #pragma hmpp & args[_fict_].size={tmax}
-  
-  #pragma hmpp fdtd2d advancedload, &
-  #pragma hmpp & args[tmax;nx;ny], &
-  #pragma hmpp & args[ex;ey;hz;_fict_]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp fdtd2d region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (t = 0; t < _PB_TMAX; t++)
-      {
+  for (t = 0; t < _PB_TMAX; t++)
+    {
+      for (j = 0; j < _PB_NY; j++)
+	ey[0][j] = _fict_[t];
+      for (i = 1; i < _PB_NX; i++)
 	for (j = 0; j < _PB_NY; j++)
-	  ey[0][j] = _fict_[t];
-	for (i = 1; i < _PB_NX; i++)
-	  for (j = 0; j < _PB_NY; j++)
-	    ey[i][j] = ey[i][j] - 0.5*(hz[i][j]-hz[i-1][j]);
-	for (i = 0; i < _PB_NX; i++)
-	  for (j = 1; j < _PB_NY; j++)
-	    ex[i][j] = ex[i][j] - 0.5*(hz[i][j]-hz[i][j-1]);
-	for (i = 0; i < _PB_NX - 1; i++)
-	  for (j = 0; j < _PB_NY - 1; j++)
-	    hz[i][j] = hz[i][j] - 0.7*  (ex[i][j+1] - ex[i][j] +
-					 ey[i+1][j] - ey[i][j]);
-      }
-  }
-  #pragma hmpp fdtd2d synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp fdtd2d delegatedstore, args[ex;ey;hz]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp fdtd2d release
-  #pragma endscop
-
+	  ey[i][j] = ey[i][j] - 0.5*(hz[i][j]-hz[i-1][j]);
+      for (i = 0; i < _PB_NX; i++)
+	for (j = 1; j < _PB_NY; j++)
+	  ex[i][j] = ex[i][j] - 0.5*(hz[i][j]-hz[i][j-1]);
+      for (i = 0; i < _PB_NX - 1; i++)
+	for (j = 0; j < _PB_NY - 1; j++)
+	  hz[i][j] = hz[i][j] - 0.7*  (ex[i][j+1] - ex[i][j] +
+				       ey[i+1][j] - ey[i][j]);
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp fdtd2d acquire
+
   /* Retrieve problem size. */
   int tmax = TMAX;
   int nx = NX;
@@ -136,7 +112,13 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(ey,DATA_TYPE,NX,NY,nx,ny);
   POLYBENCH_2D_ARRAY_DECL(hz,DATA_TYPE,NX,NY,nx,ny);
   POLYBENCH_1D_ARRAY_DECL(_fict_,DATA_TYPE,TMAX,tmax);
-
+  
+  #pragma hmpp fdtd2d allocate, &
+  #pragma hmpp & args[ex].size={nx,ny}, args[ex].hostdata="ex", &
+  #pragma hmpp & args[ey].size={nx,ny}, args[ey].hostdata="ey", &
+  #pragma hmpp & args[hz].size={nx,ny}, args[hz].hostdata="hz", &
+  #pragma hmpp & args[_fict_].size={tmax}, args[_fict_].hostdata="_fict_"
+    
   /* Initialize array(s). */
   init_array (tmax, nx, ny,
 	      POLYBENCH_ARRAY(ex),
@@ -154,10 +136,13 @@ int main(int argc, char** argv)
 		  POLYBENCH_ARRAY(hz),
 		  POLYBENCH_ARRAY(_fict_));
 
+  #pragma hmpp fdtd2d advancedload, args[ex;ey;hz;_fict_]
 
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
+  
+  #pragma hmpp fdtd2d delegatedstore, args[ex;ey;hz]
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
@@ -171,5 +156,7 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(hz);
   POLYBENCH_FREE_ARRAY(_fict_);
 
+  #pragma hmpp fdtd2d release
+  
   return 0;
 }

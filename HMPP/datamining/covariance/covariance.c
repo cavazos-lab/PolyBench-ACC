@@ -54,6 +54,10 @@ void print_array(int m,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp covariance codelet, &
+#pragma hmpp & args[m;n;float_n].transfer=atcall, &
+#pragma hmpp & args[data;symmat;mean].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_covariance(int m, int n,
 		       DATA_TYPE float_n,
@@ -62,63 +66,34 @@ void kernel_covariance(int m, int n,
 		       DATA_TYPE POLYBENCH_1D(mean,M,m))
 {
   int i, j, j1, j2;
-  
-  #pragma scop
-  #pragma hmpp covariance acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp covariance allocate, &
-  #pragma hmpp & args[m;n;float_n], &
-  #pragma hmpp & args[data].size={m,n}, &
-  #pragma hmpp & args[symmat].size={m,m}, &
-  #pragma hmpp & args[mean].size={m}
-
-  #pragma hmpp covariance advancedload, &
-  #pragma hmpp & args[n;m;float_n], &
-  #pragma hmpp & args[data]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp covariance region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
+  for (j = 0; j < _PB_M; j++)
+    {
+      mean[j] = 0.0;
+      for (i = 0; i < _PB_N; i++)
+	mean[j] += data[i][j];
+      mean[j] /= float_n;
+    }
+  /* Center the column vectors. */
+  for (i = 0; i < _PB_N; i++)
     for (j = 0; j < _PB_M; j++)
-      {
-	mean[j] = 0.0;
-	for (i = 0; i < _PB_N; i++)
-	  mean[j] += data[i][j];
-	mean[j] /= float_n;
-      }
-    /* Center the column vectors. */
-    for (i = 0; i < _PB_N; i++)
-      for (j = 0; j < _PB_M; j++)
-	data[i][j] -= mean[j];
-    /* Calculate the m * m covariance matrix. */
-    for (j1 = 0; j1 < _PB_M; j1++)
-      {
-	for (j2 = j1; j2 < _PB_M; j2++)
-	  {
-	    symmat[j1][j2] = 0.0;
-	    for (i = 0; i < _PB_N; i++)
-	      symmat[j1][j2] += data[i][j1] * data[i][j2];
-	    symmat[j2][j1] = symmat[j1][j2];
-	  }
-      }
-  }
-  #pragma hmpp covariance synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp covariance delegatedstore, args[symmat]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp covariance release
-  #pragma endscop
-  
+      data[i][j] -= mean[j];
+  /* Calculate the m * m covariance matrix. */
+  for (j1 = 0; j1 < _PB_M; j1++)
+    {
+      for (j2 = j1; j2 < _PB_M; j2++)
+	{
+	  symmat[j1][j2] = 0.0;
+	  for (i = 0; i < _PB_N; i++)
+	    symmat[j1][j2] += data[i][j1] * data[i][j2];
+	  symmat[j2][j1] = symmat[j1][j2];
+	}
+    }
 }
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp covariance acquire
+
   /* Retrieve problem size. */
   int n = N;
   int m = M;
@@ -128,14 +103,22 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(data,DATA_TYPE,M,N,m,n);
   POLYBENCH_2D_ARRAY_DECL(symmat,DATA_TYPE,M,M,m,m);
   POLYBENCH_1D_ARRAY_DECL(mean,DATA_TYPE,M,m);
-  
+
+  #pragma hmpp covariance allocate, &
+  #pragma hmpp & args[data].size={m,n}, args[data].hostdata="data" &
+  #pragma hmpp & args[symmat].size={m,m}, args[symmat].hostdata="symmat" &
+  #pragma hmpp & args[mean].size={m}, args[mean].hostdata="mean"
+
   /* Initialize array(s). */
   init_array (m, n, &float_n, POLYBENCH_ARRAY(data));
   
+  #pragma hmpp covariance advancedload, args[data]
+
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp covariance callsite
   kernel_covariance (m, n, float_n,
 		     POLYBENCH_ARRAY(data),
 		     POLYBENCH_ARRAY(symmat),
@@ -145,6 +128,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp covariance delegatedstore, args[symmat]
+
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(m, POLYBENCH_ARRAY(symmat)));
@@ -153,6 +138,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(data);
   POLYBENCH_FREE_ARRAY(symmat);
   POLYBENCH_FREE_ARRAY(mean);
+
+  #pragma hmpp covariance release
 
   return 0;
 }

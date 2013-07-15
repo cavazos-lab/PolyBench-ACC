@@ -62,6 +62,10 @@ void print_array(int ni, int nj,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp gemm codelet, &
+#pragma hmpp & args[ni;nj;alpha;beta].transfer=atcall, &
+#pragma hmpp & args[A;B;C].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_gemm(int ni, int nj, int nk,
 		 DATA_TYPE alpha,
@@ -71,49 +75,20 @@ void kernel_gemm(int ni, int nj, int nk,
 		 DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj))
 {
   int i, j, k;
-
-  #pragma scop
-  #pragma hmpp gemm acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp gemm allocate, &
-  #pragma hmpp & args[ni;nj;nk;alpha;beta], &
-  #pragma hmpp & args[C].size={ni,nj}, &
-  #pragma hmpp & args[A].size={ni,nk}, &
-  #pragma hmpp & args[B].size={nk,nj}
-  
-  #pragma hmpp gemm advancedload, &
-  #pragma hmpp & args[ni;nj;nk;alpha;beta], &
-  #pragma hmpp & args[C;A;B]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp gemm region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    /* C := alpha*A*B + beta*C */
-    for (i = 0; i < _PB_NI; i++)
-      for (j = 0; j < _PB_NJ; j++)
-	{
-	  C[i][j] *= beta;
-	  for (k = 0; k < _PB_NK; ++k)
-	    C[i][j] += alpha * A[i][k] * B[k][j];
-	}
-  }
-  #pragma hmpp gemm synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp gemm delegatedstore, args[C]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp gemm release
-  #pragma endscop
-
+  /* C := alpha*A*B + beta*C */
+  for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NJ; j++)
+      {
+	C[i][j] *= beta;
+	for (k = 0; k < _PB_NK; ++k)
+	  C[i][j] += alpha * A[i][k] * B[k][j];
+      }
 }
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp gemm acquire
+
   /* Retrieve problem size. */
   int ni = NI;
   int nj = NJ;
@@ -126,16 +101,24 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NI,NK,ni,nk);
   POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,NK,NJ,nk,nj);
 
+  #pragma hmpp gemm allocate, &
+  #pragma hmpp & args[C].size={ni,nj}, args[C].hostdata="C", &
+  #pragma hmpp & args[A].size={ni,nk}, args[A].hostdata="A", &
+  #pragma hmpp & args[B].size={nk,nj}, args[B].hostdata="B"
+  
   /* Initialize array(s). */
   init_array (ni, nj, nk, &alpha, &beta,
 	      POLYBENCH_ARRAY(C),
 	      POLYBENCH_ARRAY(A),
 	      POLYBENCH_ARRAY(B));
 
+  #pragma hmpp gemm advancedload, args[C;A;B]
+
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp gemm callsite
   kernel_gemm (ni, nj, nk,
 	       alpha, beta,
 	       POLYBENCH_ARRAY(C),
@@ -146,6 +129,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp gemm delegatedstore, args[C]
+
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(ni, nj,  POLYBENCH_ARRAY(C)));
@@ -154,6 +139,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(C);
   POLYBENCH_FREE_ARRAY(A);
   POLYBENCH_FREE_ARRAY(B);
+
+  #pragma hmpp gemm release
 
   return 0;
 }

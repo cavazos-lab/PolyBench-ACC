@@ -58,6 +58,10 @@ void print_array(int m,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp mm2 codelet, &
+#pragma hmpp & args[ni;nj;nk;nl;alpha;beta].transfer=atcall, &
+#pragma hmpp & args[A;B;C;D;tmp].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_correlation(int m, int n,
 			DATA_TYPE float_n,
@@ -67,89 +71,58 @@ void kernel_correlation(int m, int n,
 			DATA_TYPE POLYBENCH_1D(stddev,M,m))
 {
   int i, j, j1, j2;
-
   DATA_TYPE eps = 0.1f;
-
 #define sqrt_of_array_cell(x,j) sqrt(x[j])
-
-  #pragma scop
-  #pragma hmpp codelet acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp codelet allocate, &
-  #pragma hmpp & args[m;n;float_n], &
-  #pragma hmpp & args[data].size={m,n}, &
-  #pragma hmpp & args[symmat].size={m,m}, &
-  #pragma hmpp & args[mean;stddev].size={m}
   
-  #pragma hmpp codelet advancedload, &
-  #pragma hmpp & args[m;n;float_n], &
-  #pragma hmpp & args[data]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp codelet region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    /* Determine mean of column vectors of input data matrix */
+  /* Determine mean of column vectors of input data matrix */
+  for (j = 0; j < _PB_M; j++)
+    {
+      mean[j] = 0.0;
+      for (i = 0; i < _PB_N; i++)
+	mean[j] += data[i][j];
+      mean[j] /= float_n;
+    }
+  /* Determine standard deviations of column vectors of data matrix. */
+  for (j = 0; j < _PB_M; j++)
+    {
+      stddev[j] = 0.0;
+      for (i = 0; i < _PB_N; i++)
+	stddev[j] += (data[i][j] - mean[j]) * (data[i][j] - mean[j]);
+      stddev[j] /= float_n;
+      stddev[j] = sqrt_of_array_cell(stddev, j);
+      /* The following in an inelegant but usual way to handle
+	 near-zero std. dev. values, which below would cause a zero-
+	 divide. */
+      stddev[j] = stddev[j] <= eps ? 1.0 : stddev[j];
+    }
+  
+  /* Center and reduce the column vectors. */
+  for (i = 0; i < _PB_N; i++)
     for (j = 0; j < _PB_M; j++)
       {
-	mean[j] = 0.0;
-	for (i = 0; i < _PB_N; i++)
-	  mean[j] += data[i][j];
-	mean[j] /= float_n;
+	data[i][j] -= mean[j];
+	data[i][j] /= sqrt(float_n) * stddev[j];
       }
-    /* Determine standard deviations of column vectors of data matrix. */
-    for (j = 0; j < _PB_M; j++)
-      {
-	stddev[j] = 0.0;
-	for (i = 0; i < _PB_N; i++)
-	  stddev[j] += (data[i][j] - mean[j]) * (data[i][j] - mean[j]);
-	stddev[j] /= float_n;
-	stddev[j] = sqrt_of_array_cell(stddev, j);
-	/* The following in an inelegant but usual way to handle
-	   near-zero std. dev. values, which below would cause a zero-
-	   divide. */
-	stddev[j] = stddev[j] <= eps ? 1.0 : stddev[j];
-      }
-    
-    /* Center and reduce the column vectors. */
-    for (i = 0; i < _PB_N; i++)
-      for (j = 0; j < _PB_M; j++)
+  
+  /* Calculate the m * m correlation matrix. */
+  for (j1 = 0; j1 < _PB_M-1; j1++)
+    {
+      symmat[j1][j1] = 1.0;
+      for (j2 = j1+1; j2 < _PB_M; j2++)
 	{
-	  data[i][j] -= mean[j];
-	  data[i][j] /= sqrt(float_n) * stddev[j];
+	  symmat[j1][j2] = 0.0;
+	  for (i = 0; i < _PB_N; i++)
+	    symmat[j1][j2] += (data[i][j1] * data[i][j2]);
+	  symmat[j2][j1] = symmat[j1][j2];
 	}
-    
-    /* Calculate the m * m correlation matrix. */
-    for (j1 = 0; j1 < _PB_M-1; j1++)
-      {
-	symmat[j1][j1] = 1.0;
-	for (j2 = j1+1; j2 < _PB_M; j2++)
-	  {
-	    symmat[j1][j2] = 0.0;
-	    for (i = 0; i < _PB_N; i++)
-	      symmat[j1][j2] += (data[i][j1] * data[i][j2]);
-	    symmat[j2][j1] = symmat[j1][j2];
-	  }
-      }
-  }
-  
-  #pragma hmpp codelet synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp codelet delegatedstore, args[symmat]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp codelet release
-  #pragma endscop
-  
+    }
   symmat[_PB_M-1][_PB_M-1] = 1.0;
 }
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp correlation acquire
+  
   /* Retrieve problem size. */
   int n = N;
   int m = M;
@@ -161,12 +134,22 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(mean,DATA_TYPE,M,m);
   POLYBENCH_1D_ARRAY_DECL(stddev,DATA_TYPE,M,m);
 
+  #pragma hmpp correlation allocate, &
+  #pragma hmpp & args[data].size={m,n}, args[data].hostdata="data" &
+  #pragma hmpp & args[symmat].size={m,m}, args[symmat].hostdata="symmat" &
+  #pragma hmpp & args[mean].size={m}, args[mean].hostdata="mean"
+  #pragma hmpp & args[stddev].size={m}, args[stddev].hostdata="stddev"
+
   /* Initialize array(s). */
   init_array (m, n, &float_n, POLYBENCH_ARRAY(data));
   
+  #pragma hmpp advancedload, args[data]
+  
   /* Start timer. */
   polybench_start_instruments;
+  
   /* Run kernel. */
+  #pragma hmpp correlation callsite
   kernel_correlation (m, n, float_n,
 		      POLYBENCH_ARRAY(data),
 		      POLYBENCH_ARRAY(symmat),
@@ -175,6 +158,8 @@ int main(int argc, char** argv)
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
+  
+  #pragma hmpp correlation delegatedstore, args[symmat]
   
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
@@ -185,6 +170,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(symmat);
   POLYBENCH_FREE_ARRAY(mean);
   POLYBENCH_FREE_ARRAY(stddev);
+
+  #pragma hmpp correlation release
 
   return 0;
 }

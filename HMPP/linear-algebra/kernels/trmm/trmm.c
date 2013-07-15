@@ -55,6 +55,10 @@ void print_array(int ni,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp trmm codelet, &
+#pragma hmpp & args[ni;alpha].transfer=atcall, &
+#pragma hmpp & args[A;B].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_trmm(int ni,
 		 DATA_TYPE alpha,
@@ -62,44 +66,18 @@ void kernel_trmm(int ni,
 		 DATA_TYPE POLYBENCH_2D(B,NI,NI,ni,ni))
 {
   int i, j, k;
-  #pragma scop
-  #pragma hmpp trmm acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp trmm allocate, &
-  #pragma hmpp & args[alpha;ni], &
-  #pragma hmpp & args[A;B].size={ni,ni}
-  
-  #pragma hmpp trmm advancedload, &
-  #pragma hmpp & args[alpha;ni], &
-  #pragma hmpp & args[A;B]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp trmm region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    /*  B := alpha*A'*B, A triangular */
-    for (i = 1; i < _PB_NI; i++)
-      for (j = 0; j < _PB_NI; j++)
-	for (k = 0; k < i; k++)
-	  B[i][j] += alpha * A[i][k] * B[j][k];
-  }
-  #pragma hmpp trmm synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp trmm delegatedstore, args[B]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp trmm release
-  #pragma endscop
-  
+  /*  B := alpha*A'*B, A triangular */
+  for (i = 1; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NI; j++)
+      for (k = 0; k < i; k++)
+	B[i][j] += alpha * A[i][k] * B[j][k];
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp trmm acquire
+
   /* Retrieve problem size. */
   int ni = NI;
 
@@ -108,18 +86,27 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NI,NI,ni,ni);
   POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,NI,NI,ni,ni);
 
+  #pragma hmpp trmm allocate, &
+  #pragma hmpp & args[A].size={ni,ni}, args[A].hostdata="A", &
+  #pragma hmpp & args[B].size={ni,ni}, args[B].hostdata="B"
+
   /* Initialize array(s). */
   init_array (ni, &alpha, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
+
+  #pragma hmpp trmm advancedload, args[A;B]
 
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp trmm callsite
   kernel_trmm (ni, alpha, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
+
+  #pragma hmpp trmm delegatedstore, args[B]
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
@@ -128,6 +115,8 @@ int main(int argc, char** argv)
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(A);
   POLYBENCH_FREE_ARRAY(B);
+
+  #pragma hmpp trmm release
 
   return 0;
 }

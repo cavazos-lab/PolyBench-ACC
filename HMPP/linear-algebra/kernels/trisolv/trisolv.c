@@ -54,6 +54,10 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp trisolve codelet, &
+#pragma hmpp & args[n].transfer=atcall, &
+#pragma hmpp & args[A;x;c].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_trisolv(int n,
 		    DATA_TYPE POLYBENCH_2D(A,N,N,n,n),
@@ -61,48 +65,20 @@ void kernel_trisolv(int n,
 		    DATA_TYPE POLYBENCH_1D(c,N,n))
 {
   int i, j;
-  
-  #pragma scop
-  #pragma hmpp trisolve acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp trisolve allocate, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[x;c].size={n}, &
-  #pragma hmpp & args[A].size={n,n}
-  
-  #pragma hmpp trisolve advancedload, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[A;x;c]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp trisolve region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (i = 0; i < _PB_N; i++)
-      {
-	x[i] = c[i];
-	for (j = 0; j <= i - 1; j++)
-	  x[i] = x[i] - A[i][j] * x[j];
-	x[i] = x[i] / A[i][i];
-      }
-  }
-  #pragma hmpp trisolve synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp trisolve delegatedstore, args[x]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp trisolve release
-  #pragma endscop
-
+  for (i = 0; i < _PB_N; i++)
+    {
+      x[i] = c[i];
+      for (j = 0; j <= i - 1; j++)
+	x[i] = x[i] - A[i][j] * x[j];
+      x[i] = x[i] / A[i][i];
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp trisolve acquire
+
   /* Retrieve problem size. */
   int n = N;
 
@@ -111,19 +87,28 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, N, n);
   POLYBENCH_1D_ARRAY_DECL(c, DATA_TYPE, N, n);
 
-
+  #pragma hmpp trisolve allocate, &
+  #pragma hmpp & args[A].size={n,n}, args[A].hostdata="A", &
+  #pragma hmpp & args[x].size={n}, args[x].hostdata="x", &
+  #pragma hmpp & args[c].size={n}, args[c].hostdata="c"
+  
   /* Initialize array(s). */
   init_array (n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(c));
+
+  #pragma hmpp trisolve advancedload, args[A;x;c]
 
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp trisolve callsite
   kernel_trisolv (n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(c));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
+
+  #pragma hmpp trisolve delegatedstore, args[x]
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
@@ -133,6 +118,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(A);
   POLYBENCH_FREE_ARRAY(x);
   POLYBENCH_FREE_ARRAY(c);
+
+  #pragma hmpp trisolve release
 
   return 0;
 }

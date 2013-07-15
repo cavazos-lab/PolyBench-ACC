@@ -57,6 +57,10 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp adi codelet, &
+#pragma hmpp & args[tsteps;n].transfer=atcall, &
+#pragma hmpp & args[X;A;B].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_adi(int tsteps,
 		int n,
@@ -65,61 +69,37 @@ void kernel_adi(int tsteps,
 		DATA_TYPE POLYBENCH_2D(B,N,N,n,n))
 {
   int t, i1, i2;
-  
-  #pragma hmpp adi acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp adi allocate,  &
-  #pragma hmpp & args[tsteps;n], &
-  #pragma hmpp & args[A;B;X].size={n,n}
-  
-  #pragma hmpp adi advancedload,  &
-  #pragma hmpp & args[tsteps;n], &
-  #pragma hmpp & args[X;A;B]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp adi region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (t = 0; t < _PB_TSTEPS; t++)
-      {
-	for (i1 = 0; i1 < _PB_N; i1++)
-	  for (i2 = 1; i2 < _PB_N; i2++)
-	    {
-	      X[i1][i2] = X[i1][i2] - X[i1][i2-1] * A[i1][i2] / B[i1][i2-1];
-	      B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][i2-1];
-	    }
-	for (i1 = 0; i1 < _PB_N; i1++)
-	  X[i1][_PB_N-1] = X[i1][_PB_N-1] / B[i1][_PB_N-1];
-	for (i1 = 0; i1 < _PB_N; i1++)
-	  for (i2 = 0; i2 < _PB_N-2; i2++)
-	    X[i1][_PB_N-i2-2] = (X[i1][_PB_N-2-i2] - X[i1][_PB_N-2-i2-1] * A[i1][_PB_N-i2-3]) / B[i1][_PB_N-3-i2];
-	for (i1 = 1; i1 < _PB_N; i1++)
-	  for (i2 = 0; i2 < _PB_N; i2++) {
-	    X[i1][i2] = X[i1][i2] - X[i1-1][i2] * A[i1][i2] / B[i1-1][i2];
-	    B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1-1][i2];
+  for (t = 0; t < _PB_TSTEPS; t++)
+    {
+      for (i1 = 0; i1 < _PB_N; i1++)
+	for (i2 = 1; i2 < _PB_N; i2++)
+	  {
+	    X[i1][i2] = X[i1][i2] - X[i1][i2-1] * A[i1][i2] / B[i1][i2-1];
+	    B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][i2-1];
 	  }
+      for (i1 = 0; i1 < _PB_N; i1++)
+	X[i1][_PB_N-1] = X[i1][_PB_N-1] / B[i1][_PB_N-1];
+      for (i1 = 0; i1 < _PB_N; i1++)
+	for (i2 = 0; i2 < _PB_N-2; i2++)
+	  X[i1][_PB_N-i2-2] = (X[i1][_PB_N-2-i2] - X[i1][_PB_N-2-i2-1] * A[i1][_PB_N-i2-3]) / B[i1][_PB_N-3-i2];
+      for (i1 = 1; i1 < _PB_N; i1++)
+	for (i2 = 0; i2 < _PB_N; i2++) {
+	  X[i1][i2] = X[i1][i2] - X[i1-1][i2] * A[i1][i2] / B[i1-1][i2];
+	  B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1-1][i2];
+	}
+      for (i2 = 0; i2 < _PB_N; i2++)
+	X[_PB_N-1][i2] = X[_PB_N-1][i2] / B[_PB_N-1][i2];
+      for (i1 = 0; i1 < _PB_N-2; i1++)
 	for (i2 = 0; i2 < _PB_N; i2++)
-	  X[_PB_N-1][i2] = X[_PB_N-1][i2] / B[_PB_N-1][i2];
-	for (i1 = 0; i1 < _PB_N-2; i1++)
-	  for (i2 = 0; i2 < _PB_N; i2++)
-	    X[_PB_N-2-i1][i2] = (X[_PB_N-2-i1][i2] - X[_PB_N-i1-3][i2] * A[_PB_N-3-i1][i2]) / B[_PB_N-2-i1][i2];
-      }
-  }
-  #pragma hmpp adi synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp adi delegatedstore, args[X]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp adi release
+	  X[_PB_N-2-i1][i2] = (X[_PB_N-2-i1][i2] - X[_PB_N-i1-3][i2] * A[_PB_N-3-i1][i2]) / B[_PB_N-2-i1][i2];
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp adi acquire
+
   /* Retrieve problem size. */
   int n = N;
   int tsteps = TSTEPS;
@@ -129,29 +109,38 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, N, N, n, n);
   POLYBENCH_2D_ARRAY_DECL(B, DATA_TYPE, N, N, n, n);
 
+  #pragma hmpp adi allocate,  &
+  #pragma hmpp & args[A;B;X].size={n,n}
 
   /* Initialize array(s). */
   init_array (n, POLYBENCH_ARRAY(X), POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
-
+  
+  #pragma hmpp adi advancedload, args[X;A;B]
+  
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp adi callsite
   kernel_adi (tsteps, n, POLYBENCH_ARRAY(X),
 	      POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
-
+  
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(X)));
 
+  #pragma hmpp adi delegatedstore, args[X]
+  
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(X);
   POLYBENCH_FREE_ARRAY(A);
   POLYBENCH_FREE_ARRAY(B);
 
+  #pragma hmpp adi release
+  
   return 0;
 }

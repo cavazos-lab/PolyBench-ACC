@@ -24,12 +24,12 @@ void init_array(int length,
 		DATA_TYPE POLYBENCH_2D(c,LENGTH,LENGTH,length,length),
 		DATA_TYPE POLYBENCH_2D(W,LENGTH,LENGTH,length,length))
 {
-    int i, j;
-    for (i = 0; i < length; i++)
-	for (j = 0; j < length; j++) {
-	    c[i][j] = i*j % 2;
-	    W[i][j] = ((DATA_TYPE) i-j) / length;
-	}
+  int i, j;
+  for (i = 0; i < length; i++)
+    for (j = 0; j < length; j++) {
+      c[i][j] = i*j % 2;
+      W[i][j] = ((DATA_TYPE) i-j) / length;
+    }
 }
 
 
@@ -38,12 +38,16 @@ void init_array(int length,
 static
 void print_array(DATA_TYPE out)
 {
-    fprintf (stderr, DATA_PRINTF_MODIFIER, out);
-    fprintf (stderr, "\n");
+  fprintf (stderr, DATA_PRINTF_MODIFIER, out);
+  fprintf (stderr, "\n");
 }
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp dynprog codelet, &
+#pragma hmpp & args[tsteps;length].transfer=atcall, &
+#pragma hmpp & args[c;W;sum_c].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_dynprog(int tsteps, int length,
 		    DATA_TYPE POLYBENCH_2D(c,LENGTH,LENGTH,length,length),
@@ -51,96 +55,84 @@ void kernel_dynprog(int tsteps, int length,
 		    DATA_TYPE POLYBENCH_3D(sum_c,LENGTH,LENGTH,LENGTH,length,length,length),
 		    DATA_TYPE *out)
 {
-    int iter, i, j, k;
+  int iter, i, j, k;
 
-    DATA_TYPE out_l = 0;
+  DATA_TYPE out_l = 0;
     
-    #pragma scop
-    #pragma hmpp dynprog acquire
-    // timing start
-    // data transfer start
-    #pragma hmpp dynprog allocate, &
-    #pragma hmpp & args[tsteps;length;out_l], &
-    #pragma hmpp & args[W;c].size={length,length}, &
-    #pragma hmpp & args[sum_c].size={length,length,length}
-    
-    #pragma hmpp dynprog advancedload, &
-    #pragma hmpp & args[tsteps;length;out_l], &
-    #pragma hmpp & args[c;W]
-    // data transfer stop
-    // kernel start
-    #pragma hmpp dynprog region, &
-    #pragma hmpp & args[*].transfer=manual, &
-    #pragma hmpp & target=CUDA, &
-    #pragma hmpp & asynchronous
+  for (iter = 0; iter < _PB_TSTEPS; iter++)
     {
-	for (iter = 0; iter < _PB_TSTEPS; iter++)
+      for (i = 0; i <= _PB_LENGTH - 1; i++)
+	for (j = 0; j <= _PB_LENGTH - 1; j++)
+	  c[i][j] = 0;
+      for (i = 0; i <= _PB_LENGTH - 2; i++)
 	{
-	    for (i = 0; i <= _PB_LENGTH - 1; i++)
-		for (j = 0; j <= _PB_LENGTH - 1; j++)
-		    c[i][j] = 0;
-	    for (i = 0; i <= _PB_LENGTH - 2; i++)
+	  for (j = i + 1; j <= _PB_LENGTH - 1; j++)
 	    {
-		for (j = i + 1; j <= _PB_LENGTH - 1; j++)
-		{
-		    sum_c[i][j][i] = 0;
-		    for (k = i + 1; k <= j-1; k++)
-			sum_c[i][j][k] = sum_c[i][j][k - 1] + c[i][k] + c[k][j];
-		    c[i][j] = sum_c[i][j][j-1] + W[i][j];
-		}
+	      sum_c[i][j][i] = 0;
+	      for (k = i + 1; k <= j-1; k++)
+		sum_c[i][j][k] = sum_c[i][j][k - 1] + c[i][k] + c[k][j];
+	      c[i][j] = sum_c[i][j][j-1] + W[i][j];
 	    }
-	    out_l += c[0][_PB_LENGTH - 1];
 	}
+      out_l += c[0][_PB_LENGTH - 1];
     }
-    #pragma hmpp dynprog synchronize
-    // kernel stop
-    // data transfer start
-    #pragma hmpp dynprog delegatedstore, args[out_l]
-    // data transfer stop
-    // timing stop
-    #pragma hmpp dynprog release
-    #pragma endscop
+}
     
-    *out = out_l;
+*out = out_l;
 }
 
 int main(int argc, char** argv)
 {
-    /* Retrieve problem size. */
-    int length = LENGTH;
-    int tsteps = TSTEPS;
+  #pragma hmpp dynprog acquire
+
+  /* Retrieve problem size. */
+  int length = LENGTH;
+  int tsteps = TSTEPS;
     
-    /* Variable declaration/allocation. */
-    DATA_TYPE out;
-    POLYBENCH_3D_ARRAY_DECL(sum_c,DATA_TYPE,LENGTH,LENGTH,LENGTH,length,length,length);
-    POLYBENCH_2D_ARRAY_DECL(c,DATA_TYPE,LENGTH,LENGTH,length,length);
-    POLYBENCH_2D_ARRAY_DECL(W,DATA_TYPE,LENGTH,LENGTH,length,length);
+  /* Variable declaration/allocation. */
+  DATA_TYPE out;
+  POLYBENCH_3D_ARRAY_DECL(sum_c,DATA_TYPE,LENGTH,LENGTH,LENGTH,length,length,length);
+  POLYBENCH_2D_ARRAY_DECL(c,DATA_TYPE,LENGTH,LENGTH,length,length);
+  POLYBENCH_2D_ARRAY_DECL(W,DATA_TYPE,LENGTH,LENGTH,length,length);
     
-    /* Initialize array(s). */
-    init_array (length, POLYBENCH_ARRAY(c), POLYBENCH_ARRAY(W));
+  #pragma hmpp dynprog allocate, &
+  #pragma hmpp & args[sum_c].size={length,length,length}, args[sum_c].hostdata="sum_c"
+  #pragma hmpp & args[c].size={length,length}, args[c].hostdata="c", &
+  #pragma hmpp & args[W].size={length,length}, args[W].hostdata="W", &
+  #pragma hmpp & args[out].size={1}, args[out].hostdata="&out"
     
-    /* Start timer. */
-    polybench_start_instruments;
+  /* Initialize array(s). */
+  init_array (length, POLYBENCH_ARRAY(c), POLYBENCH_ARRAY(W));
     
-    /* Run kernel. */
-    kernel_dynprog (tsteps, length,
-	POLYBENCH_ARRAY(c),
-	POLYBENCH_ARRAY(W),
-	POLYBENCH_ARRAY(sum_c),
-	&out);
+  #pragma hmpp dynprog advancedload, args[c;W]
     
-    /* Stop and print timer. */
-    polybench_stop_instruments;
-    polybench_print_instruments;
+  /* Start timer. */
+  polybench_start_instruments;
     
-    /* Prevent dead-code elimination. All live-out data must be printed
-       by the function call in argument. */
-    polybench_prevent_dce(print_array(out));
+  /* Run kernel. */
+  #pragma hmpp dynprog callsite
+  kernel_dynprog (tsteps, length,
+		  POLYBENCH_ARRAY(c),
+		  POLYBENCH_ARRAY(W),
+		  POLYBENCH_ARRAY(sum_c),
+		  &out);
     
-    /* Be clean. */
-    POLYBENCH_FREE_ARRAY(sum_c);
-    POLYBENCH_FREE_ARRAY(c);
-    POLYBENCH_FREE_ARRAY(W);
+  /* Stop and print timer. */
+  polybench_stop_instruments;
+  polybench_print_instruments;
+
+  #pragma hmpp dynprog delegatedstore, args[out]
+
+  /* Prevent dead-code elimination. All live-out data must be printed
+     by the function call in argument. */
+  polybench_prevent_dce(print_array(out));
     
-    return 0;
+  /* Be clean. */
+  POLYBENCH_FREE_ARRAY(sum_c);
+  POLYBENCH_FREE_ARRAY(c);
+  POLYBENCH_FREE_ARRAY(W);
+    
+  #pragma hmpp dynprog release
+
+  return 0;
 }

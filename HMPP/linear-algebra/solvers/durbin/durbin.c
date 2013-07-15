@@ -60,6 +60,10 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp mm2 codelet, &
+#pragma hmpp & args[n].transfer=atcall, &
+#pragma hmpp & args[y;sum;alpha;beta;r;out].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_durbin(int n,
 		   DATA_TYPE POLYBENCH_2D(y,N,N,n,n),
@@ -74,52 +78,26 @@ void kernel_durbin(int n,
   beta[0] = 1;
   alpha[0] = r[0];
   
-  #pragma scop
-  #pragma hmpp durbin acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp durbin allocate, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[alpha;beta;r].size={n}, &
-  #pragma hmpp & args[y;sum;out].size={n,n}
-  
-  #pragma hmpp durbin advancedload, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[y;sum;alpha;beta;r]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp durbin region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (k = 1; k < _PB_N; k++)
-      {
-	beta[k] = beta[k-1] - alpha[k-1] * alpha[k-1] * beta[k-1];
-	sum[0][k] = r[k];
-	for (i = 0; i <= k - 1; i++)
-	  sum[i+1][k] = sum[i][k] + r[k-i-1] * y[i][k-1];
-	alpha[k] = -sum[k][k] * beta[k];
-	for (i = 0; i <= k-1; i++)
-	  y[i][k] = y[i][k-1] + alpha[k] * y[k-i-1][k-1];
-	y[k][k] = alpha[k];
-      }
-    for (i = 0; i < _PB_N; i++)
-      out[i] = y[i][_PB_N-1];
-  }
-  #pragma hmpp durbin synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp durbin delegatedstore, args[out]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp durbin release
-  #pragma endscop
+  for (k = 1; k < _PB_N; k++)
+    {
+      beta[k] = beta[k-1] - alpha[k-1] * alpha[k-1] * beta[k-1];
+      sum[0][k] = r[k];
+      for (i = 0; i <= k - 1; i++)
+	sum[i+1][k] = sum[i][k] + r[k-i-1] * y[i][k-1];
+      alpha[k] = -sum[k][k] * beta[k];
+      for (i = 0; i <= k-1; i++)
+	y[i][k] = y[i][k-1] + alpha[k] * y[k-i-1][k-1];
+      y[k][k] = alpha[k];
+    }
+  for (i = 0; i < _PB_N; i++)
+    out[i] = y[i][_PB_N-1];
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp durbin acquire
+
   /* Retrieve problem size. */
   int n = N;
 
@@ -131,6 +109,13 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(r, DATA_TYPE, N, n);
   POLYBENCH_1D_ARRAY_DECL(out, DATA_TYPE, N, n);
 
+  #pragma hmpp durbin allocate, &
+  #pragma hmpp & args[y].size={n,n}, args[y]="y", &
+  #pragma hmpp & args[sum].size={n,n}, args[sum]="sum", &
+  #pragma hmpp & args[alpha].size={n}, args[alpha]="alpha", &
+  #pragma hmpp & args[beta].size={n}, args[beta]="beta", &
+  #pragma hmpp & args[r].size={n}, args[r]="r", &
+  #pragma hmpp & args[out].size={n}, args[out]="out"
 
   /* Initialize array(s). */
   init_array (n,
@@ -140,10 +125,13 @@ int main(int argc, char** argv)
 	      POLYBENCH_ARRAY(beta),
 	      POLYBENCH_ARRAY(r));
 
+  #pragma hmpp durbin advancedload, args[y;sum;alpha;beta;r]
+
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp durbin callsite
   kernel_durbin (n,
 		 POLYBENCH_ARRAY(y),
 		 POLYBENCH_ARRAY(sum),
@@ -156,6 +144,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp durbin delegatedstore, args[out]
+
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(out)));
@@ -167,6 +157,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(beta);
   POLYBENCH_FREE_ARRAY(r);
   POLYBENCH_FREE_ARRAY(out);
+
+  #pragma hmpp durbin release
 
   return 0;
 }

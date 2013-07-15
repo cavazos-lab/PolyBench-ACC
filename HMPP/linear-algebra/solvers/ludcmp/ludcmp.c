@@ -58,6 +58,10 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp ludcmp codelet, &
+#pragma hmpp & args[n].transfer=atcall, &
+#pragma hmpp & args[A;b;x;y].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_ludcmp(int n,
 		   DATA_TYPE POLYBENCH_2D(A,N+1,N+1,n+1,n+1),
@@ -69,74 +73,47 @@ void kernel_ludcmp(int n,
 
   DATA_TYPE w;
   b[0] = 1.0;
-  
-  #pragma scop
-  #pragma hmpp ludcmp acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp ludcmp allocate, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[A].size={n+1,n+1}, &
-  #pragma hmpp & args[b;x;y].size={n+1}
-  
-  #pragma hmpp ludcmp advancedload, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[A;b;x;y]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp ludcmp region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (i = 0; i < _PB_N; i++)
-      {
-	for (j = i+1; j <= _PB_N; j++)
-	  {
-	    w = A[j][i];
-	    for (k = 0; k < i; k++)
-	      w = w- A[j][k] * A[k][i];
-	    A[j][i] = w / A[i][i];
-	  }
-	for (j = i+1; j <= _PB_N; j++)
-	  {
-	    w = A[i+1][j];
-	    for (k = 0; k <= i; k++)
-	      w = w  - A[i+1][k] * A[k][j];
-	    A[i+1][j] = w;
-	  }
-      }
-    y[0] = b[0];
-    for (i = 1; i <= _PB_N; i++)
-      {
-	w = b[i];
-	for (j = 0; j < i; j++)
-	  w = w - A[i][j] * y[j];
-	y[i] = w;
-      }
-    x[_PB_N] = y[_PB_N] / A[_PB_N][_PB_N];
-    for (i = 0; i <= _PB_N - 1; i++)
-      {
-	w = y[_PB_N - 1 - (i)];
-	for (j = _PB_N - i; j <= _PB_N; j++)
-	  w = w - A[_PB_N - 1 - i][j] * x[j];
-	x[_PB_N - 1 - i] = w / A[_PB_N - 1 - (i)][_PB_N - 1-(i)];
-      }
-  }
-  #pragma hmpp ludcmp synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp ludcmp delegatedstore, args[x]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp ludcmp release
-  #pragma endscop
-    
+
+  for (i = 0; i < _PB_N; i++)
+    {
+      for (j = i+1; j <= _PB_N; j++)
+	{
+	  w = A[j][i];
+	  for (k = 0; k < i; k++)
+	    w = w- A[j][k] * A[k][i];
+	  A[j][i] = w / A[i][i];
+	}
+      for (j = i+1; j <= _PB_N; j++)
+	{
+	  w = A[i+1][j];
+	  for (k = 0; k <= i; k++)
+	    w = w  - A[i+1][k] * A[k][j];
+	  A[i+1][j] = w;
+	}
+    }
+  y[0] = b[0];
+  for (i = 1; i <= _PB_N; i++)
+    {
+      w = b[i];
+      for (j = 0; j < i; j++)
+	w = w - A[i][j] * y[j];
+      y[i] = w;
+    }
+  x[_PB_N] = y[_PB_N] / A[_PB_N][_PB_N];
+  for (i = 0; i <= _PB_N - 1; i++)
+    {
+      w = y[_PB_N - 1 - (i)];
+      for (j = _PB_N - i; j <= _PB_N; j++)
+	w = w - A[_PB_N - 1 - i][j] * x[j];
+      x[_PB_N - 1 - i] = w / A[_PB_N - 1 - (i)][_PB_N - 1-(i)];
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp ludcmp acquire
+
   /* Retrieve problem size. */
   int n = N;
 
@@ -146,6 +123,11 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, N+1, n+1);
   POLYBENCH_1D_ARRAY_DECL(y, DATA_TYPE, N+1, n+1);
 
+  #pragma hmpp ludcmp allocate, &
+  #pragma hmpp & args[A].size={n+1,n+1}, args[A].hostdata="A", &
+  #pragma hmpp & args[b].size={n+1}, args[b].hostdata="b", &
+  #pragma hmpp & args[x].size={n+1}, args[x].hostdata="x", &
+  #pragma hmpp & args[y].size={n+1}, args[y].hostdata="y"
 
   /* Initialize array(s). */
   init_array (n,
@@ -154,10 +136,13 @@ int main(int argc, char** argv)
 	      POLYBENCH_ARRAY(x),
 	      POLYBENCH_ARRAY(y));
 
+  #pragma hmpp ludcmp advancedload, args[A;b;x;y]
+
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp ludcmp codelet
   kernel_ludcmp (n,
 		 POLYBENCH_ARRAY(A),
 		 POLYBENCH_ARRAY(b),
@@ -168,6 +153,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp ludcmp delegatedstore, args[x]
+
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(x)));
@@ -177,6 +164,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(b);
   POLYBENCH_FREE_ARRAY(x);
   POLYBENCH_FREE_ARRAY(y);
+
+  #pragma hmpp ludcmp release
 
   return 0;
 }

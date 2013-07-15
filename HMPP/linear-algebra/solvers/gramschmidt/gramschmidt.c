@@ -71,6 +71,10 @@ void print_array(int ni, int nj,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp mm2 codelet, &
+#pragma hmpp & args[ni;nj].transfer=atcall, &
+#pragma hmpp & args[A;R;Q].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_gramschmidt(int ni, int nj,
 			DATA_TYPE POLYBENCH_2D(A,NI,NJ,ni,nj),
@@ -80,55 +84,31 @@ void kernel_gramschmidt(int ni, int nj,
   int i, j, k;
   
   DATA_TYPE nrm;
-  #pragma scop
-  #pragma hmpp gramschmidt acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp gramschmidt allocate, &
-  #pragma hmpp & args[ni;nj], &
-  #pragma hmpp & args[A;R;Q].size={ni,nj}
   
-  #pragma hmpp gramschmidt advancedload, &
-  #pragma hmpp & args[ni;nj], &
-  #pragma hmpp & args[A;R;Q]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp gramschmidt region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (k = 0; k < _PB_NJ; k++)
-      {
-	nrm = 0;
-	for (i = 0; i < _PB_NI; i++)
-	  nrm += A[i][k] * A[i][k];
-	R[k][k] = sqrt(nrm);
-	for (i = 0; i < _PB_NI; i++)
-	  Q[i][k] = A[i][k] / R[k][k];
-	for (j = k + 1; j < _PB_NJ; j++)
-	  {
-	    R[k][j] = 0;
-	    for (i = 0; i < _PB_NI; i++)
-	      R[k][j] += Q[i][k] * A[i][j];
-	    for (i = 0; i < _PB_NI; i++)
-	      A[i][j] = A[i][j] - Q[i][k] * R[k][j];
-	  }
-      }
-  }
-  #pragma hmpp gramschmidt synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp gramschmidt delegatedstore, args[A;R;Q]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp gramschmidt release
-  #pragma endscop
+  for (k = 0; k < _PB_NJ; k++)
+    {
+      nrm = 0;
+      for (i = 0; i < _PB_NI; i++)
+	nrm += A[i][k] * A[i][k];
+      R[k][k] = sqrt(nrm);
+      for (i = 0; i < _PB_NI; i++)
+	Q[i][k] = A[i][k] / R[k][k];
+      for (j = k + 1; j < _PB_NJ; j++)
+	{
+	  R[k][j] = 0;
+	  for (i = 0; i < _PB_NI; i++)
+	    R[k][j] += Q[i][k] * A[i][j];
+	  for (i = 0; i < _PB_NI; i++)
+	    A[i][j] = A[i][j] - Q[i][k] * R[k][j];
+	}
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp gramschmidt acquire
+
   /* Retrieve problem size. */
   int ni = NI;
   int nj = NJ;
@@ -138,16 +118,24 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(R,DATA_TYPE,NJ,NJ,nj,nj);
   POLYBENCH_2D_ARRAY_DECL(Q,DATA_TYPE,NI,NJ,ni,nj);
 
+  #pragma hmpp gramschmidt allocate, &
+  #pragma hmpp & args[A].size={ni,nj}, args[A].hostdata="A", &
+  #pragma hmpp & args[R].size={ni,nj}, args[R].hostdata="R", &
+  #pragma hmpp & args[Q].size={ni,nj}, args[Q].hostdata="Q"
+
   /* Initialize array(s). */
   init_array (ni, nj,
 	      POLYBENCH_ARRAY(A),
 	      POLYBENCH_ARRAY(R),
 	      POLYBENCH_ARRAY(Q));
 
+  #pragma hmpp gramschmidt advancedload, args[A;R;Q]
+  
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp gramschmidt codelet
   kernel_gramschmidt (ni, nj,
 		      POLYBENCH_ARRAY(A),
 		      POLYBENCH_ARRAY(R),
@@ -157,6 +145,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp gramschmidt delegatedstore, args[A;R;Q]
+  
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(ni, nj, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(R), POLYBENCH_ARRAY(Q)));
@@ -165,6 +155,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(A);
   POLYBENCH_FREE_ARRAY(R);
   POLYBENCH_FREE_ARRAY(Q);
+
+  #pragma hmpp gramschmidt release
 
   return 0;
 }
