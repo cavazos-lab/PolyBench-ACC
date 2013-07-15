@@ -54,6 +54,10 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp cholesky codelet, &
+#pragma hmpp & args[n].transfer=atcall, &
+#pragma hmpp & args[p;A].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_cholesky(int n,
 		     DATA_TYPE POLYBENCH_1D(p,N,n),
@@ -61,54 +65,26 @@ void kernel_cholesky(int n,
 {
   int i, j, k;
   DATA_TYPE x;
-  #pragma scop
-
-  #pragma hmpp cholesky acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp cholesky allocate, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[A].size={n,n}, &
-  #pragma hmpp & args[p].size={n}
-
-  #pragma hmpp cholesky advancedload, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[p,A]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp cholesky region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (i = 0; i < _PB_N; ++i)
-      {
-	x = A[i][i];
-	for (j = 0; j <= i - 1; ++j)
-	  x = x - A[i][j] * A[i][j];
-	p[i] = 1.0 / sqrt(x);
-	for (j = i + 1; j < _PB_N; ++j)
-	  {
-	    x = A[i][j];
-	    for (k = 0; k <= i - 1; ++k)
-	      x = x - A[j][k] * A[i][k];
-	    A[j][i] = x * p[i];
-	  }
-      }
-  }
-  #pragma hmpp cholesky synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp cholesky delegatedstore, args[A]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp cholesky release
-  #pragma endscop
-  
+  for (i = 0; i < _PB_N; ++i)
+    {
+      x = A[i][i];
+      for (j = 0; j <= i - 1; ++j)
+	x = x - A[i][j] * A[i][j];
+      p[i] = 1.0 / sqrt(x);
+      for (j = i + 1; j < _PB_N; ++j)
+	{
+	  x = A[i][j];
+	  for (k = 0; k <= i - 1; ++k)
+	    x = x - A[j][k] * A[i][k];
+	  A[j][i] = x * p[i];
+	}
+    }
 }
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp cholesky acquire
+  
   /* Retrieve problem size. */
   int n = N;
 
@@ -116,19 +92,27 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, N, N, n, n);
   POLYBENCH_1D_ARRAY_DECL(p, DATA_TYPE, N, n);
 
+  #pragma hmpp cholesky allocate, &
+  #pragma hmpp & args[A].size={n,n}, args[A].hostdata="A", &
+  #pragma hmpp & args[p].size={n}, args[p].hostdata="p"
 
   /* Initialize array(s). */
   init_array (n, POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(A));
+
+  #pragma hmpp cholesky advancedload, args[p;A]
 
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp cholesky callsite
   kernel_cholesky (n, POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(A));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
+
+  #pragma hmpp cholesky delegatedstore, args[A]
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
@@ -137,6 +121,8 @@ int main(int argc, char** argv)
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(A);
   POLYBENCH_FREE_ARRAY(p);
+
+  #pragma hmpp cholesky release
 
   return 0;
 }

@@ -56,6 +56,10 @@ void print_array(int maxgrid,
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
 /* Source (modified): http://www.cs.uic.edu/~iluican/reg_detect.c */
+#pragma hmpp regdetect codelet, &
+#pragma hmpp & args[niter;maxgrid;length].transfer=atcall, &
+#pragma hmpp & args[sum_tang;mean;path;diff;sum_diff].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_reg_detect(int niter, int maxgrid, int length,
 		       DATA_TYPE POLYBENCH_2D(sum_tang,MAXGRID,MAXGRID,maxgrid,maxgrid),
@@ -65,62 +69,34 @@ void kernel_reg_detect(int niter, int maxgrid, int length,
 		       DATA_TYPE POLYBENCH_3D(sum_diff,MAXGRID,MAXGRID,LENGTH,maxgrid,maxgrid,length))
 {
   int t, i, j, cnt;
-  
-  #pragma scop
-  #pragma hmpp regdetect acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp regdetect allocate, &
-  #pragma hmpp & args[niter;length;maxgrid], &
-  #pragma hmpp & args[sum_tang;mean;path].size={maxgrid,maxgrid}, &
-  #pragma hmpp & args[diff;sum_diff].size={maxgrid,maxgrid,length}
-  
-  #pragma hmpp regdetect advancedload, &
-  #pragma hmpp & args[niter;length;maxgrid], &
-  #pragma hmpp & args[sum_tang;mean;path]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp regdetect region,  &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (t = 0; t < _PB_NITER; t++)
-      {
-	for (j = 0; j <= _PB_MAXGRID - 1; j++)
+  for (t = 0; t < _PB_NITER; t++)
+    {
+      for (j = 0; j <= _PB_MAXGRID - 1; j++)
+	for (i = j; i <= _PB_MAXGRID - 1; i++)
+	  for (cnt = 0; cnt <= _PB_LENGTH - 1; cnt++)
+	    diff[j][i][cnt] = sum_tang[j][i];
+      for (j = 0; j <= _PB_MAXGRID - 1; j++)
+	{
 	  for (i = j; i <= _PB_MAXGRID - 1; i++)
-	    for (cnt = 0; cnt <= _PB_LENGTH - 1; cnt++)
-	      diff[j][i][cnt] = sum_tang[j][i];
-	for (j = 0; j <= _PB_MAXGRID - 1; j++)
-	  {
-	    for (i = j; i <= _PB_MAXGRID - 1; i++)
-	      {
-		sum_diff[j][i][0] = diff[j][i][0];
-		for (cnt = 1; cnt <= _PB_LENGTH - 1; cnt++)
-		  sum_diff[j][i][cnt] = sum_diff[j][i][cnt - 1] + diff[j][i][cnt];
-		mean[j][i] = sum_diff[j][i][_PB_LENGTH - 1];
-	      }
-	  }
-	for (i = 0; i <= _PB_MAXGRID - 1; i++)
-	  path[0][i] = mean[0][i];
-	for (j = 1; j <= _PB_MAXGRID - 1; j++)
-	  for (i = j; i <= _PB_MAXGRID - 1; i++)
-	    path[j][i] = path[j - 1][i - 1] + mean[j][i];
-      }
-  }
-  #pragma hmpp regdetect synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp regdetect delegatedstore, args[path]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp regdetect release
-  #pragma endscop
-
+	    {
+	      sum_diff[j][i][0] = diff[j][i][0];
+	      for (cnt = 1; cnt <= _PB_LENGTH - 1; cnt++)
+		sum_diff[j][i][cnt] = sum_diff[j][i][cnt - 1] + diff[j][i][cnt];
+	      mean[j][i] = sum_diff[j][i][_PB_LENGTH - 1];
+	    }
+	}
+      for (i = 0; i <= _PB_MAXGRID - 1; i++)
+	path[0][i] = mean[0][i];
+      for (j = 1; j <= _PB_MAXGRID - 1; j++)
+	for (i = j; i <= _PB_MAXGRID - 1; i++)
+	  path[j][i] = path[j - 1][i - 1] + mean[j][i];
+    }
 }
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp regdetect acquire
+
   /* Retrieve problem size. */
   int niter = NITER;
   int maxgrid = MAXGRID;
@@ -133,16 +109,25 @@ int main(int argc, char** argv)
   POLYBENCH_3D_ARRAY_DECL(diff, DATA_TYPE, MAXGRID, MAXGRID, LENGTH, maxgrid, maxgrid, length);
   POLYBENCH_3D_ARRAY_DECL(sum_diff, DATA_TYPE, MAXGRID, MAXGRID, LENGTH, maxgrid, maxgrid, length);
 
+  #pragma hmpp regdetect allocate, &
+  #pragma hmpp & args[sum_tang].size={maxgrid,maxgrid}, args[sum_tang].hostdata="sum_tang", &
+  #pragma hmpp & args[mean].size={maxgrid,maxgrid}, args[mean].hostdata="mean", &
+  #pragma hmpp & args[path].size={maxgrid,maxgrid}, args[path].hostdata="path", &
+  #pragma hmpp & args[diff].size={maxgrid,maxgrid,length}, args[diff].hostdata="diff", &
+  #pragma hmpp & args[sum_diff].size={maxgrid,maxgrid,length}, args[sum_diff].hostdata="sum_diff"
   /* Initialize array(s). */
   init_array (maxgrid,
 	      POLYBENCH_ARRAY(sum_tang),
 	      POLYBENCH_ARRAY(mean),
 	      POLYBENCH_ARRAY(path));
 
+  #pragma hmpp regdetect advancedload, args[sum_tang;mean;path]
+
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp regdetect callsite
   kernel_reg_detect (niter, maxgrid, length,
 		     POLYBENCH_ARRAY(sum_tang),
 		     POLYBENCH_ARRAY(mean),
@@ -154,6 +139,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp regdetect delegatedstore, args[path]
+
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(maxgrid, POLYBENCH_ARRAY(path)));
@@ -164,6 +151,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(path);
   POLYBENCH_FREE_ARRAY(diff);
   POLYBENCH_FREE_ARRAY(sum_diff);
+
+  #pragma hmpp regdetect release
 
   return 0;
 }

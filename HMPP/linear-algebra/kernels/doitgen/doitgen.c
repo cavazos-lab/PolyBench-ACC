@@ -56,6 +56,10 @@ void print_array(int nr, int nq, int np,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp doitgen codelet, &
+#pragma hmpp & args[nr;nq;np].transfer=atcall, &
+#pragma hmpp & args[A;C4;sum].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_doitgen(int nr, int nq, int np,
 		    DATA_TYPE POLYBENCH_3D(A,NR,NQ,NP,nr,nq,np),
@@ -63,50 +67,25 @@ void kernel_doitgen(int nr, int nq, int np,
 		    DATA_TYPE POLYBENCH_3D(sum,NR,NQ,NP,nr,nq,np))
 {
   int r, q, p, s;
-  #pragma scop
-  #pragma hmpp doitgen acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp doitgen allocate, &
-  #pragma hmpp & args[nr;nq;np], &
-  #pragma hmpp & args[A;sum].size={nr,nq,np}, &
-  #pragma hmpp & args[C4].size={np,np}
   
-  #pragma hmpp doitgen advancedload, &
-  #pragma hmpp & args[nr;nq;np], &
-  #pragma hmpp & args[C4;A]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp doitgen region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (r = 0; r < _PB_NR; r++)
-      for (q = 0; q < _PB_NQ; q++) 
-	{
-	  for (p = 0; p < _PB_NP; p++)
-	    {
-	      sum[r][q][p] = 0;
-	      for (s = 0; s < _PB_NP; s++)
-		sum[r][q][p] = sum[r][q][p] + A[r][q][s] * C4[s][p];
-	    }
-	  for (p = 0; p < _PB_NR; p++)
-	    A[r][q][p] = sum[r][q][p];
-	}
-  }
-  #pragma hmpp doitgen synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp doitgen delegatedstore, args[A]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp doitgen release
-  #pragma endscop
+  for (r = 0; r < _PB_NR; r++)
+    for (q = 0; q < _PB_NQ; q++) 
+      {
+	for (p = 0; p < _PB_NP; p++)
+	  {
+	    sum[r][q][p] = 0;
+	    for (s = 0; s < _PB_NP; s++)
+	      sum[r][q][p] = sum[r][q][p] + A[r][q][s] * C4[s][p];
+	  }
+	for (p = 0; p < _PB_NR; p++)
+	  A[r][q][p] = sum[r][q][p];
+      }
 }
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp doitgen acquire
+
   /* Retrieve problem size. */
   int nr = NR;
   int nq = NQ;
@@ -117,15 +96,23 @@ int main(int argc, char** argv)
   POLYBENCH_3D_ARRAY_DECL(sum,DATA_TYPE,NR,NQ,NP,nr,nq,np);
   POLYBENCH_2D_ARRAY_DECL(C4,DATA_TYPE,NP,NP,np,np);
   
+  #pragma hmpp doitgen allocate, &
+  #pragma hmpp & args[A].size={nr,nq,np}, args[A].hostdata="A", &
+  #pragma hmpp & args[sum].size={nr,nq,np}, args[sum].hostdata="sum", &
+  #pragma hmpp & args[C4].size={np,np}, args[C4].hostdata="C4"
+  
   /* Initialize array(s). */
   init_array (nr, nq, np,
 	      POLYBENCH_ARRAY(A),
 	      POLYBENCH_ARRAY(C4));
 
+  #pragma hmpp doitgen advancedload, args[A;C4]
+
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp doitgen callsite
   kernel_doitgen (nr, nq, np,
 		  POLYBENCH_ARRAY(A),
 		  POLYBENCH_ARRAY(C4),
@@ -135,6 +122,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp doitgen delegatedstore, args[A]
+
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(nr, nq, np,  POLYBENCH_ARRAY(A)));
@@ -143,6 +132,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(A);
   POLYBENCH_FREE_ARRAY(sum);
   POLYBENCH_FREE_ARRAY(C4);
+
+  #pragma hmpp doitgen release
 
   return 0;
 }

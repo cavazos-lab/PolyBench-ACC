@@ -58,6 +58,10 @@ void print_array(int ni,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp mm2 codelet, &
+#pragma hmpp & args[ni;nj;alpha;beta].transfer=atcall, &
+#pragma hmpp & args[A;C].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_syrk(int ni, int nj,
 		 DATA_TYPE alpha,
@@ -66,48 +70,22 @@ void kernel_syrk(int ni, int nj,
 		 DATA_TYPE POLYBENCH_2D(A,NI,NJ,ni,nj))
 {
   int i, j, k;
-  #pragma scop
-  #pragma hmpp syrk acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp syrk allocate, &
-  #pragma hmpp & args[ni;nj;alpha;beta], &
-  #pragma hmpp & args[A].size={ni,nj}, &
-  #pragma hmpp & args[C].size={ni,ni}
   
-  #pragma hmpp syrk advancedload, &
-  #pragma hmpp & args[ni;nj;alpha;beta], &
-  #pragma hmpp & args[C;A]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp syrk region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    /*  C := alpha*A*A' + beta*C */
-    for (i = 0; i < _PB_NI; i++)
-      for (j = 0; j < _PB_NI; j++)
-        C[i][j] *= beta;
-    for (i = 0; i < _PB_NI; i++)
-      for (j = 0; j < _PB_NI; j++)
-        for (k = 0; k < _PB_NJ; k++)
-	  C[i][j] += alpha * A[i][k] * A[j][k];
-  }
-  #pragma hmpp syrk synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp syrk delegatedstore, args[C]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp syrk release
-  #pragma endscop
-
+  /*  C := alpha*A*A' + beta*C */
+  for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NI; j++)
+      C[i][j] *= beta;
+  for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NI; j++)
+      for (k = 0; k < _PB_NJ; k++)
+	C[i][j] += alpha * A[i][k] * A[j][k];
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp syrk acquire
+
   /* Retrieve problem size. */
   int ni = NI;
   int nj = NJ;
@@ -118,18 +96,27 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(C,DATA_TYPE,NI,NI,ni,ni);
   POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NI,NJ,ni,nj);
 
+  #pragma hmpp syrk allocate, &
+  #pragma hmpp & args[A].size={ni,nj}, args[A].hostdata="A", &
+  #pragma hmpp & args[C].size={ni,ni}, args[C].hostdata="C"
+  
   /* Initialize array(s). */
   init_array (ni, nj, &alpha, &beta, POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(A));
+
+  #pragma hmpp syrk advancedload, args[C;A]
 
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp syrk callsite
   kernel_syrk (ni, nj, alpha, beta, POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(A));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
+
+  #pragma hmpp syrk delegatedstore, args[C]
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
@@ -138,6 +125,8 @@ int main(int argc, char** argv)
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(C);
   POLYBENCH_FREE_ARRAY(A);
+  
+  #pragma hmpp syrk release
 
   return 0;
 }
