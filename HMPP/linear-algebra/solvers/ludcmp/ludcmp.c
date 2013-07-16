@@ -142,7 +142,7 @@ int main(int argc, char** argv)
   polybench_start_instruments;
 
   /* Run kernel. */
-  #pragma hmpp ludcmp codelet
+  #pragma hmpp ludcmp callsite
   kernel_ludcmp (n,
 		 POLYBENCH_ARRAY(A),
 		 POLYBENCH_ARRAY(b),

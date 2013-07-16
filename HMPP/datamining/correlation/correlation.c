@@ -60,7 +60,7 @@ void print_array(int m,
    including the call and return. */
 #pragma hmpp correlation codelet, &
 #pragma hmpp & args[m;n;float_n].transfer=atcall, &
-#pragma hmpp & args[data_symmat;mean;stddev].transfer=manual, &
+#pragma hmpp & args[data;symmat;mean;stddev].transfer=manual, &
 #pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_correlation(int m, int n,
