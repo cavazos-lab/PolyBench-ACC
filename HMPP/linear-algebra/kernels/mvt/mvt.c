@@ -61,6 +61,10 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp mvt codelet, &
+#pragma hmpp & args[n].transfer=atcall, &
+#pragma hmpp & args[x1;x2;y_1;y_2;A].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_mvt(int n,
 		DATA_TYPE POLYBENCH_1D(x1,N,n),
@@ -71,46 +75,19 @@ void kernel_mvt(int n,
 {
   int i, j;
   
-  #pragma scop
-  #pragma hmpp mvt acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp mvt allocate, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[A].size={n,n}, &
-  #pragma hmpp & args[x1;x2;y_1;y_2].size={n}
-
-  #pragma hmpp mvt advancedload, &
-  #pragma hmpp & args[n], &
-  #pragma hmpp & args[x1;x2;y_1;y_2;A]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp mvt region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (i = 0; i < _PB_N; i++)
-      for (j = 0; j < _PB_N; j++)
-	x1[i] = x1[i] + A[i][j] * y_1[j];
-    for (i = 0; i < _PB_N; i++)
-      for (j = 0; j < _PB_N; j++)
-	x2[i] = x2[i] + A[j][i] * y_2[j];
-  }
-  #pragma hmpp mvt synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp mvt delegatedstore, args[x1;x2]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp mvt release
-  #pragma endscop
-
+  for (i = 0; i < _PB_N; i++)
+    for (j = 0; j < _PB_N; j++)
+      x1[i] = x1[i] + A[i][j] * y_1[j];
+  for (i = 0; i < _PB_N; i++)
+    for (j = 0; j < _PB_N; j++)
+      x2[i] = x2[i] + A[j][i] * y_2[j];
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp mvt acquire
+
   /* Retrieve problem size. */
   int n = N;
 
@@ -121,6 +98,12 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(y_1, DATA_TYPE, N, n);
   POLYBENCH_1D_ARRAY_DECL(y_2, DATA_TYPE, N, n);
 
+  #pragma hmpp mvt allocate, &
+  #pragma hmpp & args[A].size={n,n}, args[A].hostdata="A", &
+  #pragma hmpp & args[x1].size={n}, args[x1].hostdata="x1", &
+  #pragma hmpp & args[x2].size={n}, args[x2].hostdata="x2", &
+  #pragma hmpp & args[y_1].size={n}, args[y_1].hostdata="y_1", &
+  #pragma hmpp & args[y_2].size={n}, args[y_2].hostdata="y_2"
 
   /* Initialize array(s). */
   init_array (n,
@@ -129,11 +112,14 @@ int main(int argc, char** argv)
 	      POLYBENCH_ARRAY(y_1),
 	      POLYBENCH_ARRAY(y_2),
 	      POLYBENCH_ARRAY(A));
-
+  
+  #pragma hmpp mvt advancedload, args[x1;x2;y_1;y_2;A]
+  
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp mvt callsite
   kernel_mvt (n,
 	      POLYBENCH_ARRAY(x1),
 	      POLYBENCH_ARRAY(x2),
@@ -145,6 +131,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp mvt delegatedstore, args[x1;x2]
+  
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2)));
@@ -155,6 +143,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(x2);
   POLYBENCH_FREE_ARRAY(y_1);
   POLYBENCH_FREE_ARRAY(y_2);
+
+  #pragma hmpp mvt release
 
   return 0;
 }

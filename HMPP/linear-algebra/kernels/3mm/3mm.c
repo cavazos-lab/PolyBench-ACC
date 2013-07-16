@@ -62,6 +62,10 @@ void print_array(int ni, int nl,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp mm3 codelet, &
+#pragma hmpp & args[ni;nj;nk;nl;nm;].transfer=atcall, &
+#pragma hmpp & args[A;B;C;D;E;F;G].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
 		DATA_TYPE POLYBENCH_2D(E,NI,NJ,ni,nj),
@@ -73,68 +77,37 @@ void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
 		DATA_TYPE POLYBENCH_2D(G,NI,NL,ni,nl))
 {
   int i, j, k;
-  #pragma scop
-  #pragma hmpp mm3 acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp mm3 allocate, &
-  #pragma hmpp & args[ni;nj;nk;nl;nm].size={ni,nk}, &
-  #pragma hmpp & args[A].size={ni,nk}, &
-  #pragma hmpp & args[B].size={nk,nj}, &
-  #pragma hmpp & args[C].size={nj,nm}, &
-  #pragma hmpp & args[D].size={nm,nl}, &
-  #pragma hmpp & args[E].size={ni,nj}, &
-  #pragma hmpp & args[F].size={nj,nl}, &
-  #pragma hmpp & args[G].size={ni,nl}
-  
-  #pragma hmpp mm3 advancedload, &
-  #pragma hmpp & args[ni;nj;nk;nl;nm], &
-  #pragma hmpp & args[A;B;C;D;E;F;G]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp mm3 region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    /* E := A*B */
-    for (i = 0; i < _PB_NI; i++)
-      for (j = 0; j < _PB_NJ; j++)
-	{
-	  E[i][j] = 0;
-	  for (k = 0; k < _PB_NK; ++k)
-	    E[i][j] += A[i][k] * B[k][j];
-	}
-    /* F := C*D */
-    for (i = 0; i < _PB_NJ; i++)
-      for (j = 0; j < _PB_NL; j++)
-	{
-	  F[i][j] = 0;
-	  for (k = 0; k < _PB_NM; ++k)
-	    F[i][j] += C[i][k] * D[k][j];
-	}
-    /* G := E*F */
-    for (i = 0; i < _PB_NI; i++)
-      for (j = 0; j < _PB_NL; j++)
-	{
-	  G[i][j] = 0;
-	  for (k = 0; k < _PB_NJ; ++k)
-	    G[i][j] += E[i][k] * F[k][j];
-	}
-  }
-  #pragma hmpp mm3 synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp mm3 delegatedstore, args[G]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp mm3 release
-  #pragma endscop
 
+  /* E := A*B */
+  for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NJ; j++)
+      {
+	E[i][j] = 0;
+	for (k = 0; k < _PB_NK; ++k)
+	  E[i][j] += A[i][k] * B[k][j];
+      }
+  /* F := C*D */
+  for (i = 0; i < _PB_NJ; i++)
+    for (j = 0; j < _PB_NL; j++)
+      {
+	F[i][j] = 0;
+	for (k = 0; k < _PB_NM; ++k)
+	  F[i][j] += C[i][k] * D[k][j];
+      }
+  /* G := E*F */
+  for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NL; j++)
+      {
+	G[i][j] = 0;
+	for (k = 0; k < _PB_NJ; ++k)
+	  G[i][j] += E[i][k] * F[k][j];
+      }
 }
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp mm3 acquire
+  
   /* Retrieve problem size. */
   int ni = NI;
   int nj = NJ;
@@ -151,18 +124,29 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(D, DATA_TYPE, NM, NL, nm, nl);
   POLYBENCH_2D_ARRAY_DECL(G, DATA_TYPE, NI, NL, ni, nl);
 
+  #pragma hmpp mm3 allocate, &
+  #pragma hmpp & args[A].size={ni,nk}, args[A].hostdata="A", &
+  #pragma hmpp & args[B].size={nk,nj}, args[B].hostdata="B", &
+  #pragma hmpp & args[C].size={nj,nm}, args[C].hostdata="C", &
+  #pragma hmpp & args[D].size={nm,nl}, args[D].hostdata="D", &
+  #pragma hmpp & args[E].size={ni,nj}, args[E].hostdata="E", &
+  #pragma hmpp & args[F].size={nj,nl}, args[F].hostdata="F", &
+  #pragma hmpp & args[G].size={ni,nl}, args[G].hostdata="G"
+  
   /* Initialize array(s). */
   init_array (ni, nj, nk, nl, nm,
 	      POLYBENCH_ARRAY(A),
 	      POLYBENCH_ARRAY(B),
 	      POLYBENCH_ARRAY(C),
 	      POLYBENCH_ARRAY(D));
-
+  
+  #pragma hmpp mm3 advancedload, args[A;B;C;D]
 
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp mm3 callsite
   kernel_3mm (ni, nj, nk, nl, nm,
 	      POLYBENCH_ARRAY(E),
 	      POLYBENCH_ARRAY(A),
@@ -176,6 +160,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
   
+  #pragma hmpp mm3 delegatedstore, args[G]
+
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(ni, nl,  POLYBENCH_ARRAY(G)));
@@ -188,6 +174,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(C);
   POLYBENCH_FREE_ARRAY(D);
   POLYBENCH_FREE_ARRAY(G);
-
+  
+  #pragma hmpp mm3 release
+  
   return 0;
 }

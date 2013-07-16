@@ -60,6 +60,10 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp gesummv codelet, &
+#pragma hmpp & args[n;alpha;beta].transfer=atcall, &
+#pragma hmpp & args[A;B;tmp;x;y].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_gesummv(int n,
 		    DATA_TYPE alpha,
@@ -71,49 +75,24 @@ void kernel_gesummv(int n,
 		    DATA_TYPE POLYBENCH_1D(y,N,n))
 {
   int i, j;
-  
-  #pragma scop
-  #pragma hmpp gesummv acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp gesummv allocate, 
-  #pragma hmpp & args[B;A].size={n,n}, &
-  #pragma hmpp & args[x;y;tmp].size={n}
-  
-  #pragma hmpp gesummv advancedload, &
-  #pragma hmpp & args[n;alpha;beta], &
-  #pragma hmpp & args[A;B;x]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp gesummv region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (i = 0; i < _PB_N; i++)
-      {
-	tmp[i] = 0;
-	y[i] = 0;
-	for (j = 0; j < _PB_N; j++)
-	  {
-	    tmp[i] = A[i][j] * x[j] + tmp[i];
-	    y[i] = B[i][j] * x[j] + y[i];
-	  }
-	y[i] = alpha * tmp[i] + beta * y[i];
-      }
-  }
-  #pragma hmpp gesummv synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp gesummv delegatedstore, args[y]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp gesummv release
-  #pragma endscop
+
+  for (i = 0; i < _PB_N; i++)
+    {
+      tmp[i] = 0;
+      y[i] = 0;
+      for (j = 0; j < _PB_N; j++)
+	{
+	  tmp[i] = A[i][j] * x[j] + tmp[i];
+	  y[i] = B[i][j] * x[j] + y[i];
+	}
+      y[i] = alpha * tmp[i] + beta * y[i];
+    }
 }
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp gesummv acquire
+
   /* Retrieve problem size. */
   int n = N;
 
@@ -126,6 +105,12 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, N, n);
   POLYBENCH_1D_ARRAY_DECL(y, DATA_TYPE, N, n);
 
+  #pragma hmpp gesummv allocate, 
+  #pragma hmpp & args[A].size={n,n}, args[A].hostdata="A", &
+  #pragma hmpp & args[B].size={n,n}, args[B].hostdata="B", &
+  #pragma hmpp & args[x].size={n}, args[x].hostdata="x", &
+  #pragma hmpp & args[y].size={n}, args[y].hostdata="y", &
+  #pragma hmpp & args[tmp].size={n}, args[tmp].hostdata="tmp"
 
   /* Initialize array(s). */
   init_array (n, &alpha, &beta,
@@ -133,10 +118,13 @@ int main(int argc, char** argv)
 	      POLYBENCH_ARRAY(B),
 	      POLYBENCH_ARRAY(x));
 
+  #pragma hmpp gesummv advancedload, args[A;B;x]
+  
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp gesummv callsite
   kernel_gesummv (n, alpha, beta,
 		  POLYBENCH_ARRAY(A),
 		  POLYBENCH_ARRAY(B),
@@ -147,7 +135,9 @@ int main(int argc, char** argv)
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
-
+  
+  #pragma hmpp gesummv delegatedstore, args[y]
+  
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(y)));
@@ -158,6 +148,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(tmp);
   POLYBENCH_FREE_ARRAY(x);
   POLYBENCH_FREE_ARRAY(y);
+
+  #pragma hmpp gesummv release
 
   return 0;
 }

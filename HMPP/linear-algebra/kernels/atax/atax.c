@@ -53,6 +53,10 @@ void print_array(int nx,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp atax codelet, &
+#pragma hmpp & args[nx;ny].transfer=atcall, &
+#pragma hmpp & args[A;x;y;tmp].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_atax(int nx, int ny,
 		 DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny),
@@ -62,50 +66,23 @@ void kernel_atax(int nx, int ny,
 {
   int i, j;
   
-  #pragma scop
-  #pragma hmpp atax acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp atax allocate, &
-  #pragma hmpp & args[nx;ny], &
-  #pragma hmpp & args[A].size={nx,ny}, &
-  #pragma hmpp & args[x;y].size={ny}, &
-  #pragma hmpp & args[tmp].size={nx}
-  
-  #pragma hmpp atax advancedload, &
-  #pragma hmpp & args[nx;ny], &
-  #pragma hmpp & args[A;x]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp atax region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (i = 0; i < _PB_NY; i++)
-      y[i] = 0;
-    for (i = 0; i < _PB_NX; i++)
-      {
-	tmp[i] = 0;
-	for (j = 0; j < _PB_NY; j++)
-	  tmp[i] = tmp[i] + A[i][j] * x[j];
-	for (j = 0; j < _PB_NY; j++)
-	  y[j] = y[j] + A[i][j] * tmp[i];
-      }
-  }
-  #pragma hmpp atax synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp atax delegatedstore, args[y]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp atax release
-  #pragma endscop
+  for (i = 0; i < _PB_NY; i++)
+    y[i] = 0;
+  for (i = 0; i < _PB_NX; i++)
+    {
+      tmp[i] = 0;
+      for (j = 0; j < _PB_NY; j++)
+	tmp[i] = tmp[i] + A[i][j] * x[j];
+      for (j = 0; j < _PB_NY; j++)
+	y[j] = y[j] + A[i][j] * tmp[i];
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp atax acquire
+
   /* Retrieve problem size. */
   int nx = NX;
   int ny = NY;
@@ -116,13 +93,22 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(y, DATA_TYPE, NY, ny);
   POLYBENCH_1D_ARRAY_DECL(tmp, DATA_TYPE, NX, nx);
 
+  #pragma hmpp atax allocate, &
+  #pragma hmpp & args[A].size={nx,ny}, args[A].hostdata="A", &
+  #pragma hmpp & args[x].size={ny}, args[x].hostdata="x", &
+  #pragma hmpp & args[y].size={ny}, args[y].hostdata="y", &
+  #pragma hmpp & args[tmp].size={nx}, args[tmp].hostdata="tmp"
+
   /* Initialize array(s). */
   init_array (nx, ny, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(x));
-
+  
+  #pragma hmpp atax advancedload, args[A;x]
+  
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp atax callsite
   kernel_atax (nx, ny,
 	       POLYBENCH_ARRAY(A),
 	       POLYBENCH_ARRAY(x),
@@ -133,6 +119,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp atax delegatedstore, args[y]
+  
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(nx, POLYBENCH_ARRAY(y)));
@@ -142,6 +130,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(x);
   POLYBENCH_FREE_ARRAY(y);
   POLYBENCH_FREE_ARRAY(tmp);
-
+  
+  #pragma hmpp atax release
+  
   return 0;
 }

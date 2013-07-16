@@ -61,6 +61,10 @@ void print_array(int ni, int nj,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp symm codelet, &
+#pragma hmpp & args[ni;nj;alpha;beta].transfer=atcall, &
+#pragma hmpp & args[A;B;C].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_symm(int ni, int nj,
 		 DATA_TYPE alpha,
@@ -71,55 +75,28 @@ void kernel_symm(int ni, int nj,
 {
   int i, j, k;
   DATA_TYPE acc;
-  
-  #pragma scop
-  #pragma hmpp symm acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp symm allocate, &
-  #pragma hmpp & args[ni;nj;alpha;beta], &
-  #pragma hmpp & args[B;C].size={ni,nj}, &
-  #pragma hmpp & args[A].size={nj,nj}, &
-  
-  #pragma hmpp symm advancedload, &
-  #pragma hmpp & args[ni;nj;alpha;beta], &
-  #pragma hmpp & args[A;B;C].size={ni,nj}
-  // data transfer stop
-  // kernel start
-  #pragma hmpp symm region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  { 
-    /*  C := alpha*A*B + beta*C, A is symetric */
-    for (i = 0; i < _PB_NI; i++)
-      {
-	for (j = 0; j < _PB_NJ; j++)
-	  {
-	    acc = 0;
-	    for (k = 0; k < j - 1; k++)
-	      {
-		C[k][j] += alpha * A[k][i] * B[i][j];
-		acc += B[k][j] * A[k][i];
-	      }
-	    C[i][j] = beta * C[i][j] + alpha * A[i][i] * B[i][j] + alpha * acc;
-	  }
-      }
-  }
-  #pragma hmpp symm synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp symm delegatedstore, args[C]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp symm release
-  #pragma endscop
 
+  /*  C := alpha*A*B + beta*C, A is symetric */
+  for (i = 0; i < _PB_NI; i++)
+    {
+      for (j = 0; j < _PB_NJ; j++)
+	{
+	  acc = 0;
+	  for (k = 0; k < j - 1; k++)
+	    {
+	      C[k][j] += alpha * A[k][i] * B[i][j];
+	      acc += B[k][j] * A[k][i];
+	    }
+	  C[i][j] = beta * C[i][j] + alpha * A[i][i] * B[i][j] + alpha * acc;
+	}
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp symm acquire
+
   /* Retrieve problem size. */
   int ni = NI;
   int nj = NJ;
@@ -131,16 +108,24 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NJ,NJ,nj,nj);
   POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,NI,NJ,ni,nj);
 
+  #pragma hmpp symm allocate, &
+  #pragma hmpp & args[B].size={ni,nj}, args[B].hostdata="B", &
+  #pragma hmpp & args[C].size={ni,nj}, args[C].hostdata="C", &
+  #pragma hmpp & args[A].size={nj,nj}, args[A].hostdata="A"
+  
   /* Initialize array(s). */
   init_array (ni, nj, &alpha, &beta,
 	      POLYBENCH_ARRAY(C),
 	      POLYBENCH_ARRAY(A),
 	      POLYBENCH_ARRAY(B));
 
+  #pragma hmpp symm advancedload, args[C;A;B]
+
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp symm callsite
   kernel_symm (ni, nj,
 	       alpha, beta,
 	       POLYBENCH_ARRAY(C),
@@ -151,6 +136,8 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
 
+  #pragma hmpp symm delegatedstore, args[C]
+  
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(ni, nj,  POLYBENCH_ARRAY(C)));
@@ -160,5 +147,7 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(A);
   POLYBENCH_FREE_ARRAY(B);
 
+  #pragma hmpp symm release
+  
   return 0;
 }

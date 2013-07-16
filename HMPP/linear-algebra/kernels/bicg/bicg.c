@@ -58,9 +58,12 @@ void print_array(int nx, int ny,
   fprintf (stderr, "\n");
 }
 
-
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#pragma hmpp bicg codelet, &
+#pragma hmpp & args[nx;ny].transfer=atcall, &
+#pragma hmpp & args[A;s;q;p;r].transfer=manual, &
+#pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_bicg(int nx, int ny,
 		 DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny),
@@ -70,53 +73,24 @@ void kernel_bicg(int nx, int ny,
 		 DATA_TYPE POLYBENCH_1D(r,NX,nx))
 {
   int i, j;
-  
-  #pragma scop
-  #pragma hmpp codelet acquire
-  // timing start
-  // data transfer start
-  #pragma hmpp codelet allocate, &
-  #pragma hmpp & args[nx;ny], &
-  #pragma hmpp & args[A].size={nx,ny}, &
-  #pragma hmpp & args[s;p].size={ny}, &
-  #pragma hmpp & args[q;r].size={nx}
-  
-  #pragma hmpp codelet advancedload, &
-  #pragma hmpp & args[nx;ny], &
-  #pragma hmpp & args[A;r;p]
-  // data transfer stop
-  // kernel start
-  #pragma hmpp codelet region, &
-  #pragma hmpp & args[*].transfer=manual, &
-  #pragma hmpp & target=CUDA, &
-  #pragma hmpp & asynchronous
-  {
-    for (i = 0; i < _PB_NY; i++)
-      s[i] = 0;
-    for (i = 0; i < _PB_NX; i++)
-      {
-        q[i] = 0;
-	for (j = 0; j < _PB_NY; j++)
-	  {
-            s[j] = s[j] + r[i] * A[i][j];
-	    q[i] = q[i] + A[i][j] * p[j];
-          }
-      }
-  }
-  #pragma hmpp codelet synchronize
-  // kernel stop
-  // data transfer start
-  #pragma hmpp codelet delegatedstore, args[s;q]
-  // data transfer stop
-  // timing stop
-  #pragma hmpp codelet release
-  #pragma endscop
-
+  for (i = 0; i < _PB_NY; i++)
+    s[i] = 0;
+  for (i = 0; i < _PB_NX; i++)
+    {
+      q[i] = 0;
+      for (j = 0; j < _PB_NY; j++)
+	{
+	  s[j] = s[j] + r[i] * A[i][j];
+	  q[i] = q[i] + A[i][j] * p[j];
+	}
+    }
 }
 
 
 int main(int argc, char** argv)
 {
+  #pragma hmpp bicg acquire
+
   /* Retrieve problem size. */
   int nx = NX;
   int ny = NY;
@@ -128,16 +102,26 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(p, DATA_TYPE, NY, ny);
   POLYBENCH_1D_ARRAY_DECL(r, DATA_TYPE, NX, nx);
 
+  #pragma hmpp bicg allocate, &
+  #pragma hmpp & args[A].size={nx,ny}, args[A].hostdata="A", &
+  #pragma hmpp & args[s].size={ny}, args[s].hostdata="s", &
+  #pragma hmpp & args[p].size={ny}, args[p].hostdata="p", &
+  #pragma hmpp & args[q].size={nx}, args[q].hostdata="q", &
+  #pragma hmpp & args[r].size={nx}, args[r].hostdata="r"
+ 
   /* Initialize array(s). */
   init_array (nx, ny,
 	      POLYBENCH_ARRAY(A),
 	      POLYBENCH_ARRAY(r),
 	      POLYBENCH_ARRAY(p));
 
+  #pragma hmpp bicg advancedload, args[A;r;p]
+
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
+  #pragma hmpp bicg callsite
   kernel_bicg (nx, ny,
 	       POLYBENCH_ARRAY(A),
 	       POLYBENCH_ARRAY(s),
@@ -148,7 +132,9 @@ int main(int argc, char** argv)
   /* Stop and print timer. */
   polybench_stop_instruments;
   polybench_print_instruments;
-
+  
+  #pragma hmpp bicg delegatedstore, args[s;q]
+  
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(nx, ny, POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(q)));
@@ -159,6 +145,8 @@ int main(int argc, char** argv)
   POLYBENCH_FREE_ARRAY(q);
   POLYBENCH_FREE_ARRAY(p);
   POLYBENCH_FREE_ARRAY(r);
+
+  #pragma hmpp bicg release
 
   return 0;
 }
