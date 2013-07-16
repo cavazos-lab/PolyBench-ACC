@@ -110,12 +110,12 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(out, DATA_TYPE, N, n);
 
   #pragma hmpp durbin allocate, &
-  #pragma hmpp & args[y].size={n,n}, args[y]="y", &
-  #pragma hmpp & args[sum].size={n,n}, args[sum]="sum", &
-  #pragma hmpp & args[alpha].size={n}, args[alpha]="alpha", &
-  #pragma hmpp & args[beta].size={n}, args[beta]="beta", &
-  #pragma hmpp & args[r].size={n}, args[r]="r", &
-  #pragma hmpp & args[out].size={n}, args[out]="out"
+  #pragma hmpp & args[y].size={n,n}, args[y].hostdata="y", &
+  #pragma hmpp & args[sum].size={n,n}, args[sum].hostdata="sum", &
+  #pragma hmpp & args[alpha].size={n}, args[alpha].hostdata="alpha", &
+  #pragma hmpp & args[beta].size={n}, args[beta].hostdata="beta", &
+  #pragma hmpp & args[r].size={n}, args[r].hostdata="r", &
+  #pragma hmpp & args[out].size={n}, args[out].hostdata="out"
 
   /* Initialize array(s). */
   init_array (n,
