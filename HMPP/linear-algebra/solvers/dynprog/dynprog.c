@@ -46,7 +46,7 @@ void print_array(DATA_TYPE out)
    including the call and return. */
 #pragma hmpp dynprog codelet, &
 #pragma hmpp & args[tsteps;length].transfer=atcall, &
-#pragma hmpp & args[c;W;sum_c].transfer=manual, &
+#pragma hmpp & args[c;W;sum_c;out].transfer=manual, &
 #pragma hmpp & target=CUDA:OPENCL
 static
 void kernel_dynprog(int tsteps, int length,
