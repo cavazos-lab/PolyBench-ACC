@@ -76,9 +76,7 @@ void kernel_dynprog(int tsteps, int length,
 	}
       out_l += c[0][_PB_LENGTH - 1];
     }
-}
-    
-*out = out_l;
+  *out = out_l;
 }
 
 int main(int argc, char** argv)
