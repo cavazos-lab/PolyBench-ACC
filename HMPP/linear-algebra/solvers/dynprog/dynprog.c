@@ -94,7 +94,7 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(W,DATA_TYPE,LENGTH,LENGTH,length,length);
     
   #pragma hmpp dynprog allocate, &
-  #pragma hmpp & args[sum_c].size={length,length,length}, args[sum_c].hostdata="sum_c"
+#pragma hmpp & args[sum_c].size={length,length,length}, args[sum_c].hostdata="sum_c", &
   #pragma hmpp & args[c].size={length,length}, args[c].hostdata="c", &
   #pragma hmpp & args[W].size={length,length}, args[W].hostdata="W", &
   #pragma hmpp & args[out].size={1}, args[out].hostdata="&out"
