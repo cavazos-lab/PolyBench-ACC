@@ -89,7 +89,7 @@ int main(int argc, char** argv)
 
   #pragma hmpp jacobi1d allocate, &
   #pragma hmpp & args[A].size={n}, args[A].hostdata="A", &
-  #pragma hmpp & args[B].size={n}, args[B].hostdata="B", &
+  #pragma hmpp & args[B].size={n}, args[B].hostdata="B"
 
   /* Initialize array(s). */
   init_array (n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));

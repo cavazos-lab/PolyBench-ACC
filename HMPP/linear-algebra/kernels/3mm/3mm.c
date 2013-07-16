@@ -63,7 +63,7 @@ void print_array(int ni, int nl,
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
 #pragma hmpp mm3 codelet, &
-#pragma hmpp & args[ni;nj;nk;nl;nm;].transfer=atcall, &
+#pragma hmpp & args[ni;nj;nk;nl;nm].transfer=atcall, &
 #pragma hmpp & args[A;B;C;D;E;F;G].transfer=manual, &
 #pragma hmpp & target=CUDA:OPENCL
 static

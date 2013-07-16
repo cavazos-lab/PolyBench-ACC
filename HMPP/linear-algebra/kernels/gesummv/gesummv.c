@@ -105,7 +105,7 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(x, DATA_TYPE, N, n);
   POLYBENCH_1D_ARRAY_DECL(y, DATA_TYPE, N, n);
 
-  #pragma hmpp gesummv allocate, 
+  #pragma hmpp gesummv allocate, &
   #pragma hmpp & args[A].size={n,n}, args[A].hostdata="A", &
   #pragma hmpp & args[B].size={n,n}, args[B].hostdata="B", &
   #pragma hmpp & args[x].size={n}, args[x].hostdata="x", &
