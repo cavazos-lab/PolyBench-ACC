@@ -135,9 +135,9 @@ int main(int argc, char** argv)
   POLYBENCH_1D_ARRAY_DECL(stddev,DATA_TYPE,M,m);
 
   #pragma hmpp correlation allocate, &
-  #pragma hmpp & args[data].size={m,n}, args[data].hostdata="data" &
-  #pragma hmpp & args[symmat].size={m,m}, args[symmat].hostdata="symmat" &
-  #pragma hmpp & args[mean].size={m}, args[mean].hostdata="mean"
+  #pragma hmpp & args[data].size={m,n}, args[data].hostdata="data", &
+  #pragma hmpp & args[symmat].size={m,m}, args[symmat].hostdata="symmat", &
+  #pragma hmpp & args[mean].size={m}, args[mean].hostdata="mean", &
   #pragma hmpp & args[stddev].size={m}, args[stddev].hostdata="stddev"
 
   /* Initialize array(s). */

@@ -71,7 +71,7 @@ void print_array(int ni, int nj,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-#pragma hmpp mm2 codelet, &
+#pragma hmpp gramschmidt codelet, &
 #pragma hmpp & args[ni;nj].transfer=atcall, &
 #pragma hmpp & args[A;R;Q].transfer=manual, &
 #pragma hmpp & target=CUDA:OPENCL
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
   polybench_start_instruments;
 
   /* Run kernel. */
-  #pragma hmpp gramschmidt codelet
+  #pragma hmpp gramschmidt callsite
   kernel_gramschmidt (ni, nj,
 		      POLYBENCH_ARRAY(A),
 		      POLYBENCH_ARRAY(R),
