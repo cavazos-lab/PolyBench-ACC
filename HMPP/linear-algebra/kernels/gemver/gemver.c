@@ -71,7 +71,7 @@ void print_array(int n,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-#pragma hmpp gemvar codelet, &
+#pragma hmpp gemver codelet, &
 #pragma hmpp & args[n;alpha;beta].transfer=atcall, &
 #pragma hmpp & args[A;u1;v1;u2;v2;w;x;y;z].transfer=manual, &
 #pragma hmpp & target=CUDA:OPENCL
