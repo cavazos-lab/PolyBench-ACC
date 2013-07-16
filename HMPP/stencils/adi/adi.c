@@ -1,9 +1,11 @@
-/**
- * adi.c: This file is part of the PolyBench/C 3.2 test suite.
+/* POLYBENCH/GPU-HMPP
  *
+ * This file is a part of the Polybench/GPU-HMPP suite
  *
- * Contact: Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
- * Web address: http://polybench.sourceforge.net
+ * Contact:
+ * William Killian <killian@udel.edu>
+ * 
+ * Copyright 2013, The University of Delaware
  */
 #include <stdio.h>
 #include <unistd.h>
@@ -110,7 +112,9 @@ int main(int argc, char** argv)
   POLYBENCH_2D_ARRAY_DECL(B, DATA_TYPE, N, N, n, n);
 
   #pragma hmpp adi allocate,  &
-  #pragma hmpp & args[A;B;X].size={n,n}
+  #pragma hmpp & args[A].size={n,n}, args[A].hostdata="A", &
+  #pragma hmpp & args[B].size={n,n}, args[B].hostdata="B", &
+  #pragma hmpp & args[X].size={n,n}, args[X].hostdata="X"
 
   /* Initialize array(s). */
   init_array (n, POLYBENCH_ARRAY(X), POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
@@ -129,12 +133,12 @@ int main(int argc, char** argv)
   polybench_stop_instruments;
   polybench_print_instruments;
   
+  #pragma hmpp adi delegatedstore, args[X]
+  
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */
   polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(X)));
 
-  #pragma hmpp adi delegatedstore, args[X]
-  
   /* Be clean. */
   POLYBENCH_FREE_ARRAY(X);
   POLYBENCH_FREE_ARRAY(A);

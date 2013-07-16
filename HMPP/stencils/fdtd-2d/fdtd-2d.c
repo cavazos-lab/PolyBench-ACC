@@ -1,9 +1,11 @@
-/**
- * fdtd-2d.c: This file is part of the PolyBench/C 3.2 test suite.
+/* POLYBENCH/GPU-HMPP
  *
+ * This file is a part of the Polybench/GPU-HMPP suite
  *
- * Contact: Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
- * Web address: http://polybench.sourceforge.net
+ * Contact:
+ * William Killian <killian@udel.edu>
+ * 
+ * Copyright 2013, The University of Delaware
  */
 #include <stdio.h>
 #include <unistd.h>
