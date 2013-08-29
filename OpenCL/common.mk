@@ -1,5 +1,5 @@
-OpenCL_SDK=/home/scott/NVIDIA_GPU_Computing_SDK
-INCLUDE=-I${OpenCL_SDK}/OpenCL/common/inc
+OpenCL_SDK=/global/homes/s/sgrauerg/NVIDIA_GPU_Computing_SDK
+INCLUDE=-I${OpenCL_SDK}/OpenCL/common/inc -I../../common
 LIBPATH=-L${OpenCL_SDK}/OpenCL/common/lib -L${OpenCL_SDK}/shared/lib
 LIB=-lOpenCL -lm
 all:

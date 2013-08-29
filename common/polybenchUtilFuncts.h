@@ -1,22 +1,12 @@
 //polybenchUtilFuncts.h
 //Scott Grauer-Gray (sgrauerg@gmail.com)
-//Functions used acrosscodes
+//Functions used across codes
 
 #ifndef POLYBENCH_UTIL_FUNCTS_H
 #define POLYBENCH_UTIL_FUNCTS_H
 
 //define a small float value
 #define SMALL_FLOAT_VAL 0.00000001f
-
-double rtclock()
-{
-    struct timezone Tzp;
-    struct timeval Tp;
-    int stat;
-    stat = gettimeofday (&Tp, &Tzp);
-    if (stat != 0) printf("Error return from gettimeofday: %d",stat);
-    return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
-}
 
 
 float absVal(float a)
