@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
+#include <math.h>
 
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>

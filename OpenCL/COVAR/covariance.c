@@ -3,6 +3,7 @@
  *
  *
  * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
  * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
  * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
  */
@@ -20,28 +21,19 @@
 #include <CL/cl.h>
 #endif
 
+#define POLYBENCH_TIME 1
+
+//select the OpenCL device to use (can be GPU, CPU, or Accelerator such as Intel Xeon Phi)
+#define OPENCL_DEVICE_SELECTION CL_DEVICE_TYPE_GPU
+
+#include "covariance.h"
+#include "../../common/polybench.h"
 #include "../../common/polybenchUtilFuncts.h"
 
 //define the error threshold for the results "not matching"
 #define PERCENT_DIFF_ERROR_THRESHOLD 0.05
 
 #define MAX_SOURCE_SIZE (0x100000)
-
-/* Problem size */
-#define M 2048
-#define N 2048
-
-/* Thread block dimensions for kernel 1*/
-#define DIM_LOCAL_WORK_GROUP_KERNEL_1_X 256
-#define DIM_LOCAL_WORK_GROUP_KERNEL_1_Y 1
-
-/* Thread block dimensions for kernel 2*/
-#define DIM_LOCAL_WORK_GROUP_KERNEL_2_X 32
-#define DIM_LOCAL_WORK_GROUP_KERNEL_2_Y 8
-
-/* Thread block dimensions for kernel 3*/
-#define DIM_LOCAL_WORK_GROUP_KERNEL_3_X 256
-#define DIM_LOCAL_WORK_GROUP_KERNEL_3_Y 1
 
 #define sqrt_of_array_cell(x,j) sqrt(x[j])
 
@@ -51,8 +43,6 @@
 #pragma OPENCL EXTENSION cl_amd_fp64 : enable
 #endif
 
-/* Can switch DATA_TYPE between float and double */
-typedef float DATA_TYPE;
 
 char str_temp[1024];
 
@@ -79,18 +69,19 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
+#define RUN_ON_CPU
 
 
-void compareResults(DATA_TYPE* symmat, DATA_TYPE* symmat_outputFromGpu)
+void compareResults(DATA_TYPE POLYBENCH_2D(symmat,M,M,m,m), DATA_TYPE POLYBENCH_2D(symmat_outputFromGpu,M,M,m,m))
 {
 	int i,j,fail;
 	fail = 0;
 
-	for (i=0; i<=M; i++)
+	for (i=0; i<M; i++)
 	{
-		for (j=0; j<=N; j++)
+		for (j=0; j<N; j++)
 		{
-			if (percentDiff(symmat[i*(N+1) + j], symmat_outputFromGpu[i*(N+1) + j]) > PERCENT_DIFF_ERROR_THRESHOLD)
+			if (percentDiff(symmat[i][j], symmat_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD)
 			{
 				fail++;
 			}			
@@ -115,7 +106,7 @@ void read_cl_file()
 }
 
 
-void init_arrays(DATA_TYPE* data)
+void init_arrays(DATA_TYPE POLYBENCH_2D(data,M,N,m,n))
 {
 	int i, j;
 
@@ -123,7 +114,7 @@ void init_arrays(DATA_TYPE* data)
 	{
 		for (j = 0; j < N; j++)
 		{
-			data[i*(N+1) + j] = ((DATA_TYPE) i*j) / M;
+			data[i][j] = ((DATA_TYPE) i*j) / M;
 		}
 	}
 }
@@ -144,7 +135,7 @@ void cl_initialization()
 	if(errcode == CL_SUCCESS) printf("platform version is %s\n",str_temp);
 	else printf("Error getting platform version\n");
 
-	errcode = clGetDeviceIDs( platform_id, CL_DEVICE_TYPE_GPU, 1, &device_id, &num_devices);
+	errcode = clGetDeviceIDs( platform_id, OPENCL_DEVICE_SELECTION, 1, &device_id, &num_devices);
 	if(errcode == CL_SUCCESS) printf("number of devices is %d\n", num_devices);
 	else printf("Error getting device IDs\n");
 
@@ -162,17 +153,17 @@ void cl_initialization()
 }
 
 
-void cl_mem_init(DATA_TYPE* data, DATA_TYPE* symmat, DATA_TYPE* mean)
+void cl_mem_init(DATA_TYPE POLYBENCH_2D(data,M,N,m,n), DATA_TYPE POLYBENCH_2D(symmat,M,M,m,m), DATA_TYPE POLYBENCH_1D(mean,M,m))
 {
-	data_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, sizeof(DATA_TYPE) * (M+1) * (N+1), NULL, &errcode);
-	symmat_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, sizeof(DATA_TYPE) * (M+1) * (N+1), NULL, &errcode);
-	mean_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, sizeof(DATA_TYPE) * (M+1), NULL, &errcode);
+	data_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, sizeof(DATA_TYPE) * M * N, NULL, &errcode);
+	symmat_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, sizeof(DATA_TYPE) * M * N, NULL, &errcode);
+	mean_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, sizeof(DATA_TYPE) * M, NULL, &errcode);
 		
 	if(errcode != CL_SUCCESS) printf("Error in creating buffers\n");
 
-	errcode = clEnqueueWriteBuffer(clCommandQue, data_mem_obj, CL_TRUE, 0, sizeof(DATA_TYPE) * (M+1) * (N+1), data, 0, NULL, NULL);
-	errcode = clEnqueueWriteBuffer(clCommandQue, symmat_mem_obj, CL_TRUE, 0, sizeof(DATA_TYPE) * (M+1) * (N+1), symmat, 0, NULL, NULL);
-	errcode = clEnqueueWriteBuffer(clCommandQue, mean_mem_obj, CL_TRUE, 0, sizeof(DATA_TYPE) * (M+1), mean, 0, NULL, NULL);
+	errcode = clEnqueueWriteBuffer(clCommandQue, data_mem_obj, CL_TRUE, 0, sizeof(DATA_TYPE) * M * N, data, 0, NULL, NULL);
+	errcode = clEnqueueWriteBuffer(clCommandQue, symmat_mem_obj, CL_TRUE, 0, sizeof(DATA_TYPE) * M * N, symmat, 0, NULL, NULL);
+	errcode = clEnqueueWriteBuffer(clCommandQue, mean_mem_obj, CL_TRUE, 0, sizeof(DATA_TYPE) * M, mean, 0, NULL, NULL);
 	if(errcode != CL_SUCCESS)printf("Error in writing buffers\n");
 }
 
@@ -203,8 +194,6 @@ void cl_load_prog()
 
 void cl_launch_kernel()
 {
-	double t_start, t_end;
-
 	int m = M;
 	int n = N;
 
@@ -227,7 +216,8 @@ void cl_launch_kernel()
 	globalWorkSize_Kernel3[0] = (size_t)ceil(((float)M) / ((float)DIM_LOCAL_WORK_GROUP_KERNEL_3_X)) * DIM_LOCAL_WORK_GROUP_KERNEL_3_X;
 	globalWorkSize_Kernel3[1] = 1;
 
-	t_start = rtclock();
+	/* Start timer. */
+  	polybench_start_instruments;
 	
 	// Set the arguments of the kernel
 	errcode =  clSetKernelArg(clKernel_mean, 0, sizeof(cl_mem), (void *)&mean_mem_obj);
@@ -270,10 +260,10 @@ void cl_launch_kernel()
 	if(errcode != CL_SUCCESS) printf("Error in launching kernel4\n");
 	clFinish(clCommandQue);
 
-
-	
-	t_end = rtclock();
-	fprintf(stdout, "GPU Runtime: %0.6lfs\n", t_end - t_start);
+	/* Stop and print timer. */
+	printf("GPU Time in seconds:\n");
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
 }
 
 
@@ -297,87 +287,110 @@ void cl_clean_up()
 }
 
 
-void covariance(DATA_TYPE* data, DATA_TYPE* symmat, DATA_TYPE* mean)
+void covariance(DATA_TYPE POLYBENCH_2D(data,M,N,m,n), DATA_TYPE POLYBENCH_2D(symmat,M,M,m,m), DATA_TYPE POLYBENCH_1D(mean,M,m))
 {
 	int i, j, j1,j2;
 
   	/* Determine mean of column vectors of input data matrix */
-	for (j = 1; j <= M; j++)
+	for (j = 0; j < M; j++)
 	{
 		mean[j] = 0.0;
-		for (i = 1; i <= N; i++)
+		for (i = 0; i < N; i++)
 		{
-        		mean[j] += data[i*(M+1) + j];
+        		mean[j] += data[i][j];
 		}
 		mean[j] /= float_n;
 	}
 
   	/* Center the column vectors. */
-	for (i = 1; i <= N; i++)
+	for (i = 0; i < N; i++)
 	{
-		for (j = 1; j <= M; j++)
+		for (j = 0; j < M; j++)
 		{
-			data[i*(M+1) + j] -= mean[j];
+			data[i][j] -= mean[j];
 		}
 	}
 
   	/* Calculate the m * m covariance matrix. */
-	for (j1 = 1; j1 <= M; j1++)
+	for (j1 = 0; j1 < M; j1++)
 	{
-		for (j2 = j1; j2 <= M; j2++)
+		for (j2 = j1; j2 < M; j2++)
    		{
-       		symmat[j1*(M+1) + j2] = 0.0;
-			for (i = 1; i <= N; i++)
+       		symmat[j1][j2] = 0.0;
+			for (i = 0; i < N; i++)
 			{
-				symmat[j1*(M+1) + j2] += data[i*(M+1) + j1] * data[i*(M+1) + j2];
+				symmat[j1][j2] += data[i][j1] * data[i][j2];
 			}
-       		symmat[j2*(M+1) + j1] = symmat[j1*(M+1) + j2];
-      	}
+       		symmat[j2][j1] = symmat[j1][j2];
+      		}
 	}
 }
 
 
-int main(void) 
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static
+void print_array(int m, DATA_TYPE POLYBENCH_2D(symmat,M,M,m,m))
 {
-	double t_start, t_end;
-	
-	DATA_TYPE* data;
-	DATA_TYPE* symmat;
-	DATA_TYPE* mean;
-	DATA_TYPE* symmat_outputFromGpu;	
+  int i, j;
 
-	DATA_TYPE* stddev_deb;
-	DATA_TYPE* mean_deb;
-	DATA_TYPE* data_deb;
+  for (i = 0; i < m; i++)
+    for (j = 0; j < m; j++) {
+      fprintf (stderr, DATA_PRINTF_MODIFIER, symmat[i][j]);
+      if ((i * m + j) % 20 == 0) fprintf (stderr, "\n");
+    }
+  fprintf (stderr, "\n");
+}
 
-	data = (DATA_TYPE*)malloc((M + 1)*(N + 1)*sizeof(DATA_TYPE));
-	symmat = (DATA_TYPE*)malloc((M + 1)*(M + 1)*sizeof(DATA_TYPE));
-	mean = (DATA_TYPE*)malloc((M + 1)*sizeof(DATA_TYPE));
-	symmat_outputFromGpu = (DATA_TYPE*)malloc((M + 1)*(M + 1)*sizeof(DATA_TYPE));	
 
-	init_arrays(data);
+int main(void) 
+{	
+	POLYBENCH_2D_ARRAY_DECL(data,DATA_TYPE,M,N,m,n);
+	POLYBENCH_2D_ARRAY_DECL(symmat,DATA_TYPE,M,M,m,m);
+	POLYBENCH_1D_ARRAY_DECL(mean,DATA_TYPE,M,m);
+	POLYBENCH_2D_ARRAY_DECL(symmat_outputFromGpu,DATA_TYPE,M,M,m,m);	
+
+	init_arrays(POLYBENCH_ARRAY(data));
 	read_cl_file();
 	cl_initialization();
-	cl_mem_init(data, symmat, mean);
+	cl_mem_init(POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(symmat), POLYBENCH_ARRAY(mean));
 	cl_load_prog();
 
 	cl_launch_kernel();
 
-	errcode = clEnqueueReadBuffer(clCommandQue, symmat_mem_obj, CL_TRUE, 0, (M+1) * (N+1) * sizeof(DATA_TYPE), symmat_outputFromGpu, 0, NULL, NULL);
+	errcode = clEnqueueReadBuffer(clCommandQue, symmat_mem_obj, CL_TRUE, 0, M * N * sizeof(DATA_TYPE), POLYBENCH_ARRAY(symmat_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");   
 
-	t_start = rtclock();
-	covariance(data, symmat, mean);
-	t_end = rtclock(); 
-	fprintf(stdout, "CPU Runtime: %0.6lfs\n", t_end - t_start);   
-	compareResults(symmat, symmat_outputFromGpu);
+	#ifdef RUN_ON_CPU
+
+		/* Start timer. */
+	  	polybench_start_instruments;
+
+		covariance(POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(symmat), POLYBENCH_ARRAY(mean));
+	
+		/* Stop and print timer. */
+		printf("CPU Time in seconds:\n");
+	  	polybench_stop_instruments;
+	 	polybench_print_instruments;
+
+		compareResults(POLYBENCH_ARRAY(symmat), POLYBENCH_ARRAY(symmat_outputFromGpu));
+
+	#else //print output to stderr so no dead code elimination
+
+		print_array(M, POLYBENCH_ARRAY(symmat_outputFromGpu));
+
+	#endif //RUN_ON_CPU
+
+
 	cl_clean_up();
 	
-	free(data);
-	free(symmat);
-	free(mean);
-	free(symmat_outputFromGpu);	
+	POLYBENCH_FREE_ARRAY(data);
+	POLYBENCH_FREE_ARRAY(symmat);
+	POLYBENCH_FREE_ARRAY(mean);
+	POLYBENCH_FREE_ARRAY(symmat_outputFromGpu);	
 	
-    return 0;
+	return 0;
 }
+
+#include "../../common/polybench.c"
 
