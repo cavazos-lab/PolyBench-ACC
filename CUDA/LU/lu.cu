@@ -1,18 +1,12 @@
-/*********************************************************************************/
-//
-// Polybench kernels implementation on CUDA GPU
-//
-// Computer & Information Science, University of Delaware
-// Author(s):   Sudhee Ayalasomayajula (sudhee1@gmail.com)
-//              John Cavazos (cavazos@cis.udel.edu)
-//		Scott Grauer Gray(sgrauerg@gmail.com)
-//              Robert Searles (rsearles35@aol.com)   
-//              Lifan Xu (xulifan@udel.edu)
-//
-// Contact(s): Lifan Xu (xulifan@udel.edu)
-// Reference(s):
-//
-/*********************************************************************************/
+/**
+ * lu.cu: This file is part of the PolyBench/GPU 1.0 test suite.
+ *
+ *
+ * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
+ * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
+ * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
+ */
 
 #include <unistd.h>
 #include <stdio.h>
@@ -22,6 +16,10 @@
 #include <stdarg.h>
 #include <string.h>
 
+#define POLYBENCH_TIME 1
+
+#include "lu.cuh"
+#include "../../common/polybench.h"
 #include "../../common/polybenchUtilFuncts.h"
 
 //define the error threshold for the results "not matching"
@@ -29,44 +27,30 @@
 
 #define GPU_DEVICE 0
 
-/* Problem size. */
-#define N 2048
-
-/* Thread block dimensions for kernel 1 */
-#define DIM_THREAD_BLOCK_KERNEL_1_X 256
-#define DIM_THREAD_BLOCK_KERNEL_1_Y 1
-
-/* Thread block dimensions for kernel 2 */
-#define DIM_THREAD_BLOCK_KERNEL_2_X 32
-#define DIM_THREAD_BLOCK_KERNEL_2_Y 8
+//#define RUN_ON_CPU
 
 
-/* Can switch DATA_TYPE between float and double */
-typedef float DATA_TYPE;
-
-
-
-void lu(DATA_TYPE* A)
+void lu(DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
 	for (int k = 0; k < N; k++)
     {
 		for (int j = k + 1; j < N; j++)
 		{
-			A[k*N + j] = A[k*N + j] / A[k*N + k];
+			A[k][j] = A[k][j] / A[k][k];
 		}
 
 		for (int i = k + 1; i < N; i++)
 		{
 			for (int j = k + 1; j < N; j++)
 			{
-				A[i*N + j] = A[i*N + j] - A[i*N + k] * A[k*N + j];
+				A[i][j] = A[i][j] - A[i][k] * A[k][j];
 			}
 		}
     }
 }
 
 
-void init_array(DATA_TYPE* A)
+void init_array(DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
 	int i, j;
 
@@ -74,13 +58,13 @@ void init_array(DATA_TYPE* A)
 	{
 		for (j = 0; j < N; j++)
 		{
-			A[i*N + j] = ((DATA_TYPE) i*j + 1) / N;
+			A[i][j] = ((DATA_TYPE) i*j + 1) / N;
 		}
 	}
 }
 
 
-void compareResults(DATA_TYPE* A_cpu, DATA_TYPE* A_outputFromGpu)
+void compareResults(DATA_TYPE POLYBENCH_2D(A_cpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_outputFromGpu,N,N,n,n))
 {
 	int i, j, fail;
 	fail = 0;
@@ -88,9 +72,9 @@ void compareResults(DATA_TYPE* A_cpu, DATA_TYPE* A_outputFromGpu)
 	// Compare a and b
 	for (i=0; i<N; i++) 
 	{
-		for (j=0; j<(N); j++) 
+		for (j=0; j<N; j++) 
 		{
-			if (percentDiff(A_cpu[i*N + j], A_outputFromGpu[i*N + j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
+			if (percentDiff(A_cpu[i][j], A_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
 				fail++;
 			}
@@ -98,7 +82,7 @@ void compareResults(DATA_TYPE* A_cpu, DATA_TYPE* A_outputFromGpu)
 	}
 	
 	// Print results
-	printf("Number of misses: %d\n", fail);
+	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
 }
 
 
@@ -134,10 +118,8 @@ __global__ void lu_kernel2(DATA_TYPE *A, int k)
 }
 
 
-void luCuda(DATA_TYPE* A, DATA_TYPE* A_outputFromGpu)
+void luCuda(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_outputFromGpu,N,N,n,n))
 {
-	double t_start, t_end;
-
 	DATA_TYPE* AGpu;
 
 	cudaMalloc(&AGpu, N * N * sizeof(DATA_TYPE));
@@ -148,7 +130,8 @@ void luCuda(DATA_TYPE* A, DATA_TYPE* A_outputFromGpu)
 	dim3 grid1(1, 1, 1);
 	dim3 grid2(1, 1, 1);
 
-	t_start = rtclock();
+	/* Start timer. */
+  	polybench_start_instruments;
 
 	for (int k = 0; k < N; k++)
 	{
@@ -162,38 +145,71 @@ void luCuda(DATA_TYPE* A, DATA_TYPE* A_outputFromGpu)
 		cudaThreadSynchronize();
 	}
 	
-	t_end = rtclock();
+	/* Stop and print timer. */
+	printf("GPU Time in seconds:\n");
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
+
 	cudaMemcpy(A_outputFromGpu, AGpu, N * N * sizeof(DATA_TYPE), cudaMemcpyDeviceToHost);
-	fprintf(stdout, "GPU Runtime: %0.6lfs\n", t_end - t_start);
 	cudaFree(AGpu);
+}
+
+
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static
+void print_array(int n,
+		 DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
+
+{
+  int i, j;
+
+  for (i = 0; i < n; i++)
+    for (j = 0; j < n; j++) {
+      fprintf (stderr, DATA_PRINTF_MODIFIER, A[i][j]);
+      if ((i * n + j) % 20 == 0) fprintf (stderr, "\n");
+    }
+  fprintf (stderr, "\n");
 }
 	
 
 int main(int argc, char *argv[])
 {
-	double t_start, t_end;
-	
-	DATA_TYPE* A;
-	DATA_TYPE* A_outputFromGpu;
+	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,N,N,n,n);
+  	POLYBENCH_2D_ARRAY_DECL(A_outputFromGpu,DATA_TYPE,N,N,n,n);
 
-	A = (DATA_TYPE*)malloc(N*N*sizeof(DATA_TYPE));
-	A_outputFromGpu = (DATA_TYPE*)malloc(N*N*sizeof(DATA_TYPE));
-
-	init_array(A);
+	init_array(POLYBENCH_ARRAY(A));
 
 	GPU_argv_init();
-	luCuda(A, A_outputFromGpu);
+	luCuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(A_outputFromGpu));
 	
-	t_start = rtclock();
-	lu(A);
-	t_end = rtclock();
-	fprintf(stdout, "CPU Runtime: %0.6lfs\n", t_end - t_start);
-	
-	compareResults(A, A_outputFromGpu);
 
-	free(A);
-	free(A_outputFromGpu);
+	#ifdef RUN_ON_CPU
+
+		/* Start timer. */
+	  	polybench_start_instruments;
+
+		lu(POLYBENCH_ARRAY(A));
+
+		/* Stop and print timer. */
+		printf("CPU Time in seconds:\n");
+	  	polybench_stop_instruments;
+	 	polybench_print_instruments;
+	
+		compareResults(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(A_outputFromGpu));
+
+	#else //print output to stderr so no dead code elimination
+
+		print_array(N, POLYBENCH_ARRAY(A_outputFromGpu));
+
+	#endif //RUN_ON_CPU
+
+
+	POLYBENCH_FREE_ARRAY(A);
+	POLYBENCH_FREE_ARRAY(A_outputFromGpu);
 
    	return 0;
 }
+
+#include "../../common/polybench.c"
 

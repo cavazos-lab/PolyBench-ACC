@@ -1,2 +1,4 @@
-all:
-	nvcc -O3 lu.cu -o lu.exe
+EXECUTABLE := lu.exe
+CUFILES := lu.cu
+
+include ../common.mk

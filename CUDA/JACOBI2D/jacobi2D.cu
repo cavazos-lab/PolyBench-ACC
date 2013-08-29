@@ -1,3 +1,13 @@
+/**
+ * jacobi2D.cu: This file is part of the PolyBench/GPU 1.0 test suite.
+ *
+ *
+ * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
+ * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
+ * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
+ */
+
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
@@ -7,6 +17,10 @@
 #include <stdarg.h>
 #include <math.h>
 
+#define POLYBENCH_TIME 1
+
+#include "jacobi2D.cuh"
+#include "../../common/polybench.h"
 #include "../../common/polybenchUtilFuncts.h"
 
 //define the error threshold for the results "not matching"
@@ -16,15 +30,10 @@
 #define TSTEPS 20
 #define N 1000
 
-/* Thread block dimensions */
-#define DIM_THREAD_BLOCK_X 32
-#define DIM_THREAD_BLOCK_Y 8
-
-/* Can switch DATA_TYPE between float and double */
-typedef float DATA_TYPE;
+//#define RUN_ON_CPU
 
 
-void init_array(DATA_TYPE* A, DATA_TYPE* B)
+void init_array(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n))
 {
 	int i, j;
 
@@ -32,30 +41,30 @@ void init_array(DATA_TYPE* A, DATA_TYPE* B)
 	{
 		for (j = 0; j < N; j++)
 		{
-			A[i*N + j] = ((DATA_TYPE) i*(j+2) + 10) / N;
-			B[i*N + j] = ((DATA_TYPE) (i-4)*(j-1) + 11) / N;
+			A[i][j] = ((DATA_TYPE) i*(j+2) + 10) / N;
+			B[i][j] = ((DATA_TYPE) (i-4)*(j-1) + 11) / N;
 		}
 	}
 }
 
 
-void runJacobi2DCpu(DATA_TYPE* A, DATA_TYPE* B)
+void runJacobi2DCpu(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n))
 {
 	for (int t = 0; t < TSTEPS; t++)
 	{
-    	for (int i = 2; i < N - 1; i++)
+    		for (int i = 2; i < N - 1; i++)
 		{
 			for (int j = 2; j < N - 1; j++)
 			{
-	  			B[i*N + j] = 0.2f * (A[i*N + j] + A[i*N + (j-1)] + A[i*N + (1+j)] + A[(1+i)*N + j] + A[(i-1)*N + j]);
+	  			B[i][j] = 0.2f * (A[i][j] + A[i][(j-1)] + A[i][(1+j)] + A[(1+i)][j] + A[(i-1)][j]);
 			}
 		}
 		
-    	for (int i = 2; i < N-1; i++)
+    		for (int i = 2; i < N-1; i++)
 		{
 			for (int j = 2; j < N-1; j++)
 			{
-	  			A[i*N + j] = B[i*N + j];
+	  			A[i][j] = B[i][j];
 			}
 		}
 	}
@@ -86,17 +95,17 @@ __global__ void runJacobiCUDA_kernel2(DATA_TYPE* A, DATA_TYPE* B)
 }
 
 
-void compareResults(DATA_TYPE a[N], DATA_TYPE a_outputFromGpu[N], DATA_TYPE b[N], DATA_TYPE b_outputFromGpu[N])
+void compareResults(DATA_TYPE POLYBENCH_2D(a,N,N,n,n), DATA_TYPE POLYBENCH_2D(a_outputFromGpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(b,N,N,n,n), DATA_TYPE POLYBENCH_2D(b_outputFromGpu,N,N,n,n))
 {
 	int i, j, fail;
 	fail = 0;   
 
-	// Compare a and c
+	// Compare output from CPU and GPU
 	for (i=0; i<N; i++) 
 	{
 		for (j=0; j<N; j++) 
 		{
-			if (percentDiff(a[i*N + j], a_outputFromGpu[i*N + j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
+			if (percentDiff(a[i][j], a_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
 				fail++;
 			}
@@ -107,22 +116,20 @@ void compareResults(DATA_TYPE a[N], DATA_TYPE a_outputFromGpu[N], DATA_TYPE b[N]
 	{
        	for (j=0; j<N; j++) 
 		{
-        	if (percentDiff(b[i*N + j], b_outputFromGpu[i*N + j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
+        		if (percentDiff(b[i][j], b_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
-        		fail++;
-        	}
+        			fail++;
+        		}
        	}
 	}
 
 	// Print results
-	printf("Number of misses: %d\n", fail);
+	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
 }
 
 
-void runJacobi2DCUDA(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* A_outputFromGpu, DATA_TYPE* B_outputFromGpu)
+void runJacobi2DCUDA(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_outputFromGpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(B_outputFromGpu,N,N,n,n))
 {
-	double t_start, t_end;
-
 	DATA_TYPE* Agpu;
 	DATA_TYPE* Bgpu;
 
@@ -134,7 +141,8 @@ void runJacobi2DCUDA(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* A_outputFromGpu, DAT
 	dim3 block(DIM_THREAD_BLOCK_X, DIM_THREAD_BLOCK_Y);
 	dim3 grid((unsigned int)ceil( ((float)N) / ((float)block.x) ), (unsigned int)ceil( ((float)N) / ((float)block.y) ));
 	
-	t_start = rtclock();
+	/* Start timer. */
+  	polybench_start_instruments;
 
 	for (int t = 0; t < TSTEPS; t++)
 	{
@@ -144,9 +152,11 @@ void runJacobi2DCUDA(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* A_outputFromGpu, DAT
 		cudaThreadSynchronize();
 	}
 
-	t_end = rtclock();
-	fprintf(stdout, "GPU Runtime: %0.6lfs\n", t_end - t_start);
-
+	/* Stop and print timer. */
+	printf("GPU Time in seconds:\n");
+  	polybench_stop_instruments;
+  	polybench_print_instruments;
+	
 	cudaMemcpy(A_outputFromGpu, Agpu, sizeof(DATA_TYPE) * N * N, cudaMemcpyDeviceToHost);
 	cudaMemcpy(B_outputFromGpu, Bgpu, sizeof(DATA_TYPE) * N * N, cudaMemcpyDeviceToHost);
 
@@ -155,36 +165,62 @@ void runJacobi2DCUDA(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* A_outputFromGpu, DAT
 }
 
 
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static
+void print_array(int n,
+		 DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
+
+{
+  int i, j;
+
+  for (i = 0; i < n; i++)
+    for (j = 0; j < n; j++) {
+      fprintf(stderr, DATA_PRINTF_MODIFIER, A[i][j]);
+      if ((i * n + j) % 20 == 0) fprintf(stderr, "\n");
+    }
+  fprintf(stderr, "\n");
+}
+
+
 int main(int argc, char** argv)
 {
-	double t_start, t_end;
+	POLYBENCH_2D_ARRAY_DECL(a,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(b,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(a_outputFromGpu,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(b_outputFromGpu,DATA_TYPE,N,N,n,n);
 
-	DATA_TYPE* a;
-	DATA_TYPE* b;
-	DATA_TYPE* a_outputFromGpu;
-	DATA_TYPE* b_outputFromGpu;
+	init_array(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(b));
+	runJacobi2DCUDA(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(b), POLYBENCH_ARRAY(a_outputFromGpu), POLYBENCH_ARRAY(b_outputFromGpu));
 
-	a = (DATA_TYPE*)malloc(N * N * sizeof(DATA_TYPE));
-	b = (DATA_TYPE*)malloc(N * N * sizeof(DATA_TYPE));
+	#ifdef RUN_ON_CPU
 
-	a_outputFromGpu = (DATA_TYPE*)malloc(N * N * sizeof(DATA_TYPE));
-	b_outputFromGpu = (DATA_TYPE*)malloc(N * N * sizeof(DATA_TYPE));
+		/* Start timer. */
+	  	polybench_start_instruments;
 
-	init_array(a, b);
-	runJacobi2DCUDA(a, b, a_outputFromGpu, b_outputFromGpu);
-
-	t_start = rtclock();
-	runJacobi2DCpu(a, b);
-	t_end = rtclock();
-	fprintf(stdout, "CPU Runtime: %0.6lfs\n", t_end - t_start);
+		runJacobi2DCpu(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(b));
 	
-	compareResults(a, a_outputFromGpu, b, b_outputFromGpu);
+		/* Stop and print timer. */
+		printf("CPU Time in seconds:\n");
+	  	polybench_stop_instruments;
+	  	polybench_print_instruments;
+	
+		compareResults(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(a_outputFromGpu), POLYBENCH_ARRAY(b), POLYBENCH_ARRAY(b_outputFromGpu));
 
-	free(a);
-	free(a_outputFromGpu);
-	free(b);
-	free(b_outputFromGpu);
+	#else //print output to stderr so no dead code elimination
+
+		print_array(N, POLYBENCH_ARRAY(a_outputFromGpu));
+
+	#endif //RUN_ON_CPU
+
+
+	POLYBENCH_FREE_ARRAY(a);
+	POLYBENCH_FREE_ARRAY(a_outputFromGpu);
+	POLYBENCH_FREE_ARRAY(b);
+	POLYBENCH_FREE_ARRAY(b_outputFromGpu);
 
 	return 0;
 }
+
+#include "../../common/polybench.c"
 
