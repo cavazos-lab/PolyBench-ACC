@@ -1,2 +1,4 @@
-all:
-	nvcc -O3 gemver.cu -o gemver.exe
+EXECUTABLE := gemver.exe
+CUFILES := gemver.cu
+
+include ../common.mk

@@ -3,6 +3,7 @@
  *
  *
  * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
  * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
  * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
  */
@@ -15,6 +16,10 @@
 #include <sys/time.h>
 #include <cuda.h>
 
+#define POLYBENCH_TIME 1
+
+#include "atax.cuh"
+#include "../../common/polybench.h"
 #include "../../common/polybenchUtilFuncts.h"
 
 //define the error threshold for the results "not matching"
@@ -22,24 +27,15 @@
 
 #define GPU_DEVICE 0
 
-/* Problem size. */
-#define NX 4096
-#define NY 4096
-
-/* Thread block dimensions */
-#define DIM_THREAD_BLOCK_X 256
-#define DIM_THREAD_BLOCK_Y 1
 
 #ifndef M_PI
 #define M_PI 3.14159
 #endif
 
-/* Can switch DATA_TYPE between float and double */
-typedef float DATA_TYPE;
+//#define RUN_ON_CPU
 
 
-
-void init_array(DATA_TYPE *x, DATA_TYPE *A)
+void init_array(DATA_TYPE POLYBENCH_1D(x,NX,nx), DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny))
 {
 	int i, j;
 
@@ -48,13 +44,13 @@ void init_array(DATA_TYPE *x, DATA_TYPE *A)
 		x[i] = i * M_PI;
 		for (j = 0; j < NY; j++)
 		{
-			A[i*NY + j] = ((DATA_TYPE) i*(j)) / NX;
+			A[i][j] = ((DATA_TYPE) i*(j)) / NX;
 		}
 	}
 }
 
 
-void compareResults(DATA_TYPE *z, DATA_TYPE *z_outputFromGpu)
+void compareResults(DATA_TYPE POLYBENCH_1D(z,NY,ny), DATA_TYPE POLYBENCH_1D(z_outputFromGpu,NY,ny))
 {
 	int i, fail;
 	fail = 0;
@@ -90,7 +86,7 @@ __global__ void atax_kernel1(DATA_TYPE *A, DATA_TYPE *x, DATA_TYPE *tmp)
 		int j;
 		for(j=0; j < NY; j++)
 		{
-			tmp[i] += A[i * NY + j] * x[j];
+			tmp[i] += A[i*NY+j] * x[j];
 		}
 	}
 }
@@ -104,42 +100,41 @@ __global__ void atax_kernel2(DATA_TYPE *A, DATA_TYPE *y, DATA_TYPE *tmp)
 		int i;
 		for(i=0; i < NX; i++)
 		{
-			y[j] += A[i * NY + j] * tmp[i];
+			y[j] += A[i*NY+j] * tmp[i];
 		}
 	}
 }
 
 
-void atax_cpu(DATA_TYPE* A, DATA_TYPE* x, DATA_TYPE* y, DATA_TYPE* tmp)
+void atax_cpu(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(x,NY,ny), DATA_TYPE POLYBENCH_1D(y,NY,ny), DATA_TYPE POLYBENCH_1D(tmp,NX,nx))
 {
 	int i,j;
 	
 	for (i= 0; i < NY; i++)
 	{
-    	y[i] = 0;
+    		y[i] = 0;
 	}
   
 	for (i = 0; i < NX; i++)
  	{
-      	tmp[i] = 0;
+      		tmp[i] = 0;
 
-      	for (j = 0; j < NY; j++)
+      		for (j = 0; j < NY; j++)
 		{
-			tmp[i] = tmp[i] + A[i*NY + j] * x[j];
+			tmp[i] = tmp[i] + A[i][j] * x[j];
 		}
 		
-      	for (j = 0; j < NY; j++)
+      		for (j = 0; j < NY; j++)
 		{
-			y[j] = y[j] + A[i*NY + j] * tmp[i];
+			y[j] = y[j] + A[i][j] * tmp[i];
 		}
     }
 }
 
 
-void ataxGpu(DATA_TYPE* A, DATA_TYPE* x, DATA_TYPE* y, DATA_TYPE* tmp, DATA_TYPE* y_outputFromGpu)
+void ataxGpu(DATA_TYPE POLYBENCH_2D(A, NX, NY,nx,ny), DATA_TYPE POLYBENCH_1D(x,NX,nx), DATA_TYPE POLYBENCH_1D(y,NY,ny), 
+		DATA_TYPE POLYBENCH_1D(tmp,NX,nx), DATA_TYPE POLYBENCH_1D(y_outputFromGpu,NY,ny))
 {
-	double t_start, t_end;
-
 	DATA_TYPE *A_gpu;
 	DATA_TYPE *x_gpu;
 	DATA_TYPE *y_gpu;
@@ -159,13 +154,18 @@ void ataxGpu(DATA_TYPE* A, DATA_TYPE* x, DATA_TYPE* y, DATA_TYPE* tmp, DATA_TYPE
 	dim3 grid1((size_t)(ceil( ((float)NX) / ((float)block.x) )), 1);
 	dim3 grid2((size_t)(ceil( ((float)NY) / ((float)block.x) )), 1);
 
-	t_start = rtclock();
+	/* Start timer. */
+  	polybench_start_instruments;
+
 	atax_kernel1<<< grid1, block >>>(A_gpu,x_gpu,tmp_gpu);
 	cudaThreadSynchronize();
 	atax_kernel2<<< grid2, block >>>(A_gpu,y_gpu,tmp_gpu);
 	cudaThreadSynchronize();
-	t_end = rtclock();
-	fprintf(stdout, "GPU Runtime: %0.6lfs\n", t_end - t_start);
+	
+	/* Stop and print timer. */
+	printf("GPU Time in seconds:\n");
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
 	
 	cudaMemcpy(y_outputFromGpu, y_gpu, sizeof(DATA_TYPE) * NX, cudaMemcpyDeviceToHost);
 
@@ -176,40 +176,62 @@ void ataxGpu(DATA_TYPE* A, DATA_TYPE* x, DATA_TYPE* y, DATA_TYPE* tmp, DATA_TYPE
 }
 
 
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static
+void print_array(int nx, DATA_TYPE POLYBENCH_1D(y,NX,nx))
+{
+  int i;
+
+  for (i = 0; i < nx; i++) {
+    fprintf (stderr, DATA_PRINTF_MODIFIER, y[i]);
+    if (i % 20 == 0) fprintf (stderr, "\n");
+  }
+  fprintf (stderr, "\n");
+}
+
+
 int main(int argc, char** argv)
 {
-	double t_start, t_end;
+	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NX,NY,nx,ny);
+	POLYBENCH_1D_ARRAY_DECL(x,DATA_TYPE,NY,ny);
+	POLYBENCH_1D_ARRAY_DECL(y,DATA_TYPE,NY,ny);
+	POLYBENCH_1D_ARRAY_DECL(y_outputFromGpu,DATA_TYPE,NY,ny);
+	POLYBENCH_1D_ARRAY_DECL(tmp,DATA_TYPE,NX,nx);
 
-	DATA_TYPE* A;
-	DATA_TYPE* x;
-	DATA_TYPE* y;
-	DATA_TYPE* y_outputFromGpu;
-	DATA_TYPE* tmp;
-
-	A = (DATA_TYPE*)malloc(NX*NY*sizeof(DATA_TYPE));
-	x = (DATA_TYPE*)malloc(NY*sizeof(DATA_TYPE));
-	y = (DATA_TYPE*)malloc(NY*sizeof(DATA_TYPE));
-	y_outputFromGpu = (DATA_TYPE*)malloc(NY*sizeof(DATA_TYPE));
-	tmp = (DATA_TYPE*)malloc(NX*sizeof(DATA_TYPE));
-
-	init_array(x, A);
+	init_array(POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(A));
 
 	GPU_argv_init();
-	ataxGpu(A, x, y, tmp, y_outputFromGpu);
+	ataxGpu(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(tmp), 
+		POLYBENCH_ARRAY(y_outputFromGpu));
 	
-	t_start = rtclock();
-	atax_cpu(A, x, y, tmp);
-	t_end = rtclock();
-	fprintf(stdout, "CPU Runtime: %0.6lfs\n", t_end - t_start);
+	#ifdef RUN_ON_CPU
 
-	compareResults(y, y_outputFromGpu);
+		/* Start timer. */
+	  	polybench_start_instruments;
 
-	free(A);
-	free(x);
-	free(y);
-	free(y_outputFromGpu);
-	free(tmp);
+		atax_cpu(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(tmp));
+
+		/* Stop and print timer. */
+		printf("CPU Time in seconds:\n");
+	  	polybench_stop_instruments;
+	 	polybench_print_instruments;
+
+		compareResults(POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(y_outputFromGpu));
+
+	#else
+
+		print_array(NY, POLYBENCH_ARRAY(y_outputFromGpu));
+
+	#endif //RUN_ON_CPU
+
+	POLYBENCH_FREE_ARRAY(A);
+	POLYBENCH_FREE_ARRAY(x);
+	POLYBENCH_FREE_ARRAY(y);
+	POLYBENCH_FREE_ARRAY(y_outputFromGpu);
+	POLYBENCH_FREE_ARRAY(tmp);
 
   	return 0;
 }
 
+#include "../../common/polybench.c"

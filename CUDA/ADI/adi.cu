@@ -1,18 +1,12 @@
-/*********************************************************************************/
-//
-// Polybench kernels implementation on CUDA GPU
-//
-// Computer & Information Science, University of Delaware
-// Author(s):   Sudhee Ayalasomayajula (sudhee1@gmail.com)
-//              John Cavazos (cavazos@cis.udel.edu)
-//		Scott Grauer Gray(sgrauerg@gmail.com)
-//              Robert Searles (rsearles35@aol.com)   
-//              Lifan Xu (xulifan@udel.edu)
-//
-// Contact(s): Lifan Xu (xulifan@udel.edu)
-// Reference(s):
-//
-/*********************************************************************************/
+/**
+ * adi.cu: This file is part of the PolyBench/GPU 1.0 test suite.
+ *
+ *
+ * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
+ * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
+ * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
+ */
 
 #include <unistd.h>
 #include <stdio.h>
@@ -22,6 +16,10 @@
 #include <stdarg.h>
 #include <string.h>
 
+#define POLYBENCH_TIME 1
+
+#include "adi.cuh"
+#include "../../common/polybench.h"
 #include "../../common/polybenchUtilFuncts.h"
 
 //define the error threshold for the results "not matching"
@@ -29,42 +27,32 @@
 
 #define GPU_DEVICE 0
 
-/* Problem size. */
-#define TSTEPS 1
-#define N 1024
-
-/* Thread block dimensions */
-#define DIM_THREAD_BLOCK_X 256
-#define DIM_THREAD_BLOCK_Y 1
-
-/* Can switch DATA_TYPE between float and double */
-typedef float DATA_TYPE;
+//define RUN_ON_CPU
 
 
-
-void adi(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* X)
+void adi(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
 {
 	for (int t = 0; t < TSTEPS; t++)
-    {
-    	for (int i1 = 0; i1 < N; i1++)
+    	{
+    		for (int i1 = 0; i1 < N; i1++)
 		{
 			for (int i2 = 1; i2 < N; i2++)
 			{
-				X[i1*N + i2] = X[i1*N + i2] - X[i1*N + (i2-1)] * A[i1*N + i2] / B[i1*N + (i2-1)];
-				B[i1*N + i2] = B[i1*N + i2] - A[i1*N + i2] * A[i1*N + i2] / B[i1*N + (i2-1)];
+				X[i1][i2] = X[i1][i2] - X[i1][(i2-1)] * A[i1][i2] / B[i1][(i2-1)];
+				B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][(i2-1)];
 			}
 		}
 
 	   	for (int i1 = 0; i1 < N; i1++)
 		{
-			X[i1*N + (N-1)] = X[i1*N + (N-1)] / B[i1*N + (N-1)];
+			X[i1][(N-1)] = X[i1][(N-1)] / B[i1][(N-1)];
 		}
 
 	   	for (int i1 = 0; i1 < N; i1++)
 		{
 			for (int i2 = 0; i2 < N-2; i2++)
 			{
-				X[i1*N + (N-i2-2)] = (X[i1*N + (N-2-i2)] - X[i1*N + (N-2-i2-1)] * A[i1*N + (N-i2-3)]) / B[i1*N + (N-3-i2)];
+				X[i1][(N-i2-2)] = (X[i1][(N-2-i2)] - X[i1][(N-2-i2-1)] * A[i1][(N-i2-3)]) / B[i1][(N-3-i2)];
 			}
 		}
 
@@ -72,44 +60,45 @@ void adi(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* X)
 		{
 			for (int i2 = 0; i2 < N; i2++) 
 			{
-		  		X[i1*N + i2] = X[i1*N + i2] - X[(i1-1)*N + i2] * A[i1*N + i2] / B[(i1-1)*N + i2];
-		  		B[i1*N + i2] = B[i1*N + i2] - A[i1*N + i2] * A[i1*N + i2] / B[(i1-1)*N + i2];
+		  		X[i1][i2] = X[i1][i2] - X[(i1-1)][i2] * A[i1][i2] / B[(i1-1)][i2];
+		  		B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[(i1-1)][i2];
 			}
 		}
 
 	   	for (int i2 = 0; i2 < N; i2++)
 		{
-			X[(N-1)*N + i2] = X[(N-1)*N + i2] / B[(N-1)*N + i2];
+			X[(N-1)][i2] = X[(N-1)][i2] / B[(N-1)][i2];
 		}
 
 	   	for (int i1 = 0; i1 < N-2; i1++)
 		{
 			for (int i2 = 0; i2 < N; i2++)
 			{
-		 	 	X[(N-2-i1)*N + i2] = (X[(N-2-i1)*N + i2] - X[(N-i1-3)*N + i2] * A[(N-3-i1)*N + i2]) / B[(N-2-i1)*N + i2];
+		 	 	X[(N-2-i1)][i2] = (X[(N-2-i1)][i2] - X[(N-i1-3)][i2] * A[(N-3-i1)][i2]) / B[(N-2-i1)][i2];
 			}
 		}
     }
 }
 
 
-void init_array(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* X)
+void init_array(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
 {
   	int i, j;
 
   	for (i = 0; i < N; i++)
 	{
-    	for (j = 0; j < N; j++)
-      	{
-			X[i*N + j] = ((DATA_TYPE) i*(j+1) + 1) / N;
-			A[i*N + j] = ((DATA_TYPE) (i-1)*(j+4) + 2) / N;
-			B[i*N + j] = ((DATA_TYPE) (i+3)*(j+7) + 3) / N;
-      	}
+    		for (j = 0; j < N; j++)
+      		{
+			X[i][j] = ((DATA_TYPE) i*(j+1) + 1) / N;
+			A[i][j] = ((DATA_TYPE) (i-1)*(j+4) + 2) / N;
+			B[i][j] = ((DATA_TYPE) (i+3)*(j+7) + 3) / N;
+      		}
 	}
 }
 
 
-void compareResults(DATA_TYPE* B_cpu, DATA_TYPE* B_fromGpu, DATA_TYPE* X_cpu, DATA_TYPE* X_fromGpu)
+void compareResults(DATA_TYPE POLYBENCH_2D(B_cpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(B_fromGpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(X_cpu,N,N,n,n), 
+			DATA_TYPE POLYBENCH_2D(X_fromGpu,N,N,n,n))
 {
 	int i, j, fail;
 	fail = 0;
@@ -119,10 +108,9 @@ void compareResults(DATA_TYPE* B_cpu, DATA_TYPE* B_fromGpu, DATA_TYPE* X_cpu, DA
 	{
 		for (j=0; j < N; j++) 
 		{
-			if (percentDiff(B_cpu[i*N + j], B_fromGpu[i*N + j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
+			if (percentDiff(B_cpu[i][j], B_fromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
 				fail++;
-				//printf("1: %f\n 2: %f\n", B_cpu[i*N + j], B_fromGpu[i*N + j]);
 			}
 		}
 	}
@@ -131,16 +119,15 @@ void compareResults(DATA_TYPE* B_cpu, DATA_TYPE* B_fromGpu, DATA_TYPE* X_cpu, DA
 	{
 		for (j=0; j<(N); j++) 
 		{
-			if (percentDiff(X_cpu[i*N + j], X_fromGpu[i*N + j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
+			if (percentDiff(X_cpu[i][j], X_fromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
 				fail++;
-				//printf("1: %f\n 2: %f\n", X_cpu[i*N + j], X_fromGpu[i*N + j]);
 			}
 		}
 	}
 
 	// Print results
-	printf("Number of misses: %d\n", fail);
+	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
 }
 
 
@@ -227,10 +214,9 @@ __global__ void adi_kernel6(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* X, int i1)
 }
 
 
-void adiCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* X, DATA_TYPE* B_outputFromGpu, DATA_TYPE* X_outputFromGpu)
+void adiCuda(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n), DATA_TYPE POLYBENCH_2D(B_outputFromGpu,N,N,n,n), 
+	DATA_TYPE POLYBENCH_2D(X_outputFromGpu,N,N,n,n))
 {
-	double t_start, t_end;
-
 	DATA_TYPE* A_gpu;
 	DATA_TYPE* B_gpu;
 	DATA_TYPE* X_gpu;
@@ -246,7 +232,8 @@ void adiCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* X, DATA_TYPE* B_outputFromGp
 	dim3 grid1(1, 1, 1);
 	grid1.x = (size_t)(ceil( ((float)N) / ((float)block1.x) ));
 
-	t_start = rtclock();
+	/* Start timer. */
+  	polybench_start_instruments;
 
 	for (int t = 0; t < TSTEPS; t++)
 	{
@@ -274,8 +261,11 @@ void adiCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* X, DATA_TYPE* B_outputFromGp
 		}
 	}
 
-	t_end = rtclock();
-	fprintf(stdout, "GPU Runtime: %0.6lfs\n", t_end - t_start);
+	/* Stop and print timer. */
+	printf("GPU Time in seconds:\n");
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
+
 	cudaMemcpy(B_outputFromGpu, B_gpu, N * N * sizeof(DATA_TYPE), cudaMemcpyDeviceToHost);
 	cudaMemcpy(X_outputFromGpu, X_gpu, N * N * sizeof(DATA_TYPE), cudaMemcpyDeviceToHost);
 
@@ -285,41 +275,67 @@ void adiCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* X, DATA_TYPE* B_outputFromGp
 }
 
 
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static
+void print_array(int n,
+		 DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
+
+{
+  int i, j;
+
+  for (i = 0; i < n; i++)
+    for (j = 0; j < n; j++) {
+      fprintf(stderr, DATA_PRINTF_MODIFIER, X[i][j]);
+      if ((i * N + j) % 20 == 0) fprintf(stderr, "\n");
+    }
+  fprintf(stderr, "\n");
+}
+
+
 int main(int argc, char *argv[])
 {
-	double t_start, t_end;
-	
 	GPU_argv_init();
 
-	DATA_TYPE* A;
-	DATA_TYPE* B;
-	DATA_TYPE* B_outputFromGpu;
-	DATA_TYPE* X;
-	DATA_TYPE* X_outputFromGpu;
+	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(B_outputFromGpu,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(X,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(X_outputFromGpu,DATA_TYPE,N,N,n,n);
 
-	A = (DATA_TYPE*)malloc(N*N*sizeof(DATA_TYPE));
-	B = (DATA_TYPE*)malloc(N*N*sizeof(DATA_TYPE));
-	B_outputFromGpu = (DATA_TYPE*)malloc(N*N*sizeof(DATA_TYPE));
-	X = (DATA_TYPE*)malloc(N*N*sizeof(DATA_TYPE));
-	X_outputFromGpu = (DATA_TYPE*)malloc(N*N*sizeof(DATA_TYPE));
+	init_array(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(X));
 
-	init_array(A, B, X);
-
-	adiCuda(A, B, X, B_outputFromGpu, X_outputFromGpu);
+	adiCuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(X), POLYBENCH_ARRAY(B_outputFromGpu), 
+		POLYBENCH_ARRAY(X_outputFromGpu));
 	
-	t_start = rtclock();
-	adi(A, B, X);
-	t_end = rtclock();
-	fprintf(stdout, "CPU Runtime: %0.6lfs\n", t_end - t_start);
-	
-	compareResults(B, B_outputFromGpu, X, X_outputFromGpu);
 
-	free(A);
-	free(B);
-	free(B_outputFromGpu);
-	free(X);
-	free(X_outputFromGpu);
+	#ifdef RUN_ON_CPU
+
+		/* Start timer. */
+	  	polybench_start_instruments;
+
+		adi(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(X));
+	
+		/* Stop and print timer. */
+		printf("CPU Time in seconds:\n");
+	  	polybench_stop_instruments;
+	 	polybench_print_instruments;
+	
+		compareResults(POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu), POLYBENCH_ARRAY(X), POLYBENCH_ARRAY(X_outputFromGpu));
+
+	#else
+
+		print_array(N, POLYBENCH_ARRAY(X_outputFromGpu));
+
+	#endif //RUN_ON_CPU
+
+	POLYBENCH_FREE_ARRAY(A);
+	POLYBENCH_FREE_ARRAY(B);
+	POLYBENCH_FREE_ARRAY(B_outputFromGpu);
+	POLYBENCH_FREE_ARRAY(X);
+	POLYBENCH_FREE_ARRAY(X_outputFromGpu);
 
 	return 0;
 }
 
+#include "../../common/polybench.c"

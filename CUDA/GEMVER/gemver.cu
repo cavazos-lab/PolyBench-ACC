@@ -1,18 +1,12 @@
-/*********************************************************************************/
-//
-// Polybench kernels implementation on CUDA GPU
-//
-// Computer & Information Science, University of Delaware
-// Author(s):   Sudhee Ayalasomayajula (sudhee1@gmail.com)
-//              John Cavazos (cavazos@cis.udel.edu)
-//		Scott Grauer Gray(sgrauerg@gmail.com)
-//              Robert Searles (rsearles35@aol.com)   
-//              Lifan Xu (xulifan@udel.edu)
-//
-// Contact(s): Lifan Xu (xulifan@udel.edu)
-// Reference(s):
-//
-/*********************************************************************************/
+/**
+ * gemver.cu: This file is part of the PolyBench/GPU 1.0 test suite.
+ *
+ *
+ * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
+ * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
+ * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
+ */
 
 #include <unistd.h>
 #include <stdio.h>
@@ -23,6 +17,10 @@
 #include <string.h>
 #include <cuda.h>
 
+#define POLYBENCH_TIME 1
+
+#include "gemver.cuh"
+#include "../../common/polybench.h"
 #include "../../common/polybenchUtilFuncts.h"
 
 //define the error threshold for the results "not matching"
@@ -30,66 +28,52 @@
 
 #define GPU_DEVICE 0
 
-/* Problem size */
-#define N 4096
-
-/* Thread block dimensions for kernel 1*/
-#define DIM_THREAD_BLOCK_KERNEL_1_X 32
-#define DIM_THREAD_BLOCK_KERNEL_1_Y 8
-
-/* Thread block dimensions for kernel 2*/
-#define DIM_THREAD_BLOCK_KERNEL_2_X 256
-#define DIM_THREAD_BLOCK_KERNEL_2_Y 1
-
-/* Thread block dimensions for kernel 3*/
-#define DIM_THREAD_BLOCK_KERNEL_3_X 256
-#define DIM_THREAD_BLOCK_KERNEL_3_Y 1
-
 #define ALPHA 43532.0f
 #define BETA 12313.0f
 
-/* Can switch DATA_TYPE between float and double */
-typedef float DATA_TYPE; 
+//#define RUN_ON_CPU
 
 
-
-void gemver(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* x, DATA_TYPE* y, DATA_TYPE* z, DATA_TYPE* w, DATA_TYPE* v1,
-		DATA_TYPE* v2, DATA_TYPE* u1, DATA_TYPE* u2)
+void gemver(DATA_TYPE POLYBENCH_2D(A, N, N, n, n), DATA_TYPE POLYBENCH_2D(B, N, N, n, n), DATA_TYPE POLYBENCH_1D(x, N, n), DATA_TYPE POLYBENCH_1D(y, N, n), 
+	DATA_TYPE POLYBENCH_1D(z, N, n), DATA_TYPE POLYBENCH_1D(w, N, n), DATA_TYPE POLYBENCH_1D(v1, N, n), DATA_TYPE POLYBENCH_1D(v2, N, n), DATA_TYPE POLYBENCH_1D(u1, N, n),
+	DATA_TYPE POLYBENCH_1D(u2, N, n))
 {
 	int i,j;
 	
   	for (i = 0; i < N; i++)
 	{
-    	for (j = 0; j < N; j++)
+    		for (j = 0; j < N; j++)
 		{
-      		A[i*N + j] = A[i*N + j] + u1[i] * v1[j] + u2[i] * v2[j];
+      			A[i][j] = A[i][j] + u1[i] * v1[j] + u2[i] * v2[j];
 		}
 	}
 
   	for (i = 0; i < N; i++)
 	{
-    	for (j = 0; j < N; j++)
+    		for (j = 0; j < N; j++)
 		{
-      		x[i] = x[i] + BETA * A[j*N + i] * y[j];
+      			x[i] = x[i] + BETA * A[j][i] * y[j];
 		}
 	}
 
   	for (i = 0; i < N; i++)
 	{
-    	x[i] = x[i] + z[i];
+    		x[i] = x[i] + z[i];
 	}
 
   	for (i = 0; i < N; i++)
 	{
-    	for (j = 0; j < N; j++)
+    		for (j = 0; j < N; j++)
 		{
-      		w[i] = w[i] +  ALPHA * A[i*N + j] * x[j];
+      			w[i] = w[i] +  ALPHA * A[i][j] * x[j];
 		}
 	}
 }
 
 
-void init(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* x, DATA_TYPE* y, DATA_TYPE* z, DATA_TYPE* w, DATA_TYPE* v1, DATA_TYPE* v2, DATA_TYPE* u1, DATA_TYPE* u2)
+void init(DATA_TYPE POLYBENCH_2D(A, N, N, n, n), DATA_TYPE POLYBENCH_2D(B, N, N, n, n), DATA_TYPE POLYBENCH_1D(x, N, n), DATA_TYPE POLYBENCH_1D(y, N, n), 
+	DATA_TYPE POLYBENCH_1D(z, N, n), DATA_TYPE POLYBENCH_1D(w, N, n), DATA_TYPE POLYBENCH_1D(v1, N, n), DATA_TYPE POLYBENCH_1D(v2, N, n), DATA_TYPE POLYBENCH_1D(u1, N, n),
+	DATA_TYPE POLYBENCH_1D(u2, N, n))
 {
 	int i, j;
 
@@ -106,13 +90,13 @@ void init(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* x, DATA_TYPE* y, DATA_TYPE* z, 
 
     		for (j = 0; j < N; j++)
 		{
-			A[i*N + j] = ((DATA_TYPE) i*j) / N;
+			A[i][j] = ((DATA_TYPE) i*j) / N;
 		}
 	}
 }
 
 
-void compareResults(DATA_TYPE* w1, DATA_TYPE* w2)
+void compareResults(DATA_TYPE POLYBENCH_1D(w1, N, n), DATA_TYPE POLYBENCH_1D(w2, N, n))
 {
 	int i, fail;
 	fail = 0;
@@ -182,11 +166,10 @@ __global__ void gemver_kernel3(DATA_TYPE *a, DATA_TYPE *x, DATA_TYPE *w)
 }
 
 
-void gemverCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* x, DATA_TYPE* y, DATA_TYPE* z, DATA_TYPE* w, DATA_TYPE* v1,
-				DATA_TYPE* v2, DATA_TYPE* u1, DATA_TYPE* u2, DATA_TYPE* w_outputFromGpu)
+void gemverCuda(DATA_TYPE POLYBENCH_2D(A, N, N, n, n), DATA_TYPE POLYBENCH_2D(B, N, N, n, n), DATA_TYPE POLYBENCH_1D(x, N, n), DATA_TYPE POLYBENCH_1D(y, N, n), 
+	DATA_TYPE POLYBENCH_1D(z, N, n), DATA_TYPE POLYBENCH_1D(w, N, n), DATA_TYPE POLYBENCH_1D(v1, N, n), DATA_TYPE POLYBENCH_1D(v2, N, n), DATA_TYPE POLYBENCH_1D(u1, N, n),
+	DATA_TYPE POLYBENCH_1D(u2, N, n), DATA_TYPE POLYBENCH_1D(w_outputFromGpu, N, n))
 {
-	double t_start, t_end;
-
 	DATA_TYPE *A_gpu;
 	DATA_TYPE *B_gpu;
 	DATA_TYPE *x_gpu;
@@ -229,15 +212,20 @@ void gemverCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* x, DATA_TYPE* y, DATA_TYP
 	dim3 block3(DIM_THREAD_BLOCK_KERNEL_3_X, DIM_THREAD_BLOCK_KERNEL_3_Y);
 	dim3 grid3((size_t)(ceil((float)N) / ((float)DIM_THREAD_BLOCK_KERNEL_3_X)), 1);
 	
-	t_start = rtclock();
+ 	/* Start timer. */
+  	polybench_start_instruments;
+
 	gemver_kernel1<<< grid1, block1 >>>(A_gpu,v1_gpu,v2_gpu, u1_gpu, u2_gpu);
 	cudaThreadSynchronize();
 	gemver_kernel2<<< grid2, block2 >>>(A_gpu,x_gpu,y_gpu, z_gpu);
 	cudaThreadSynchronize();
 	gemver_kernel3<<< grid3, block3 >>>(A_gpu,x_gpu,w_gpu);
 	cudaThreadSynchronize();
-	t_end = rtclock();
-	fprintf(stdout, "GPU Runtime: %0.6lfs\n", t_end - t_start);
+
+	/* Stop and print timer. */
+	printf("GPU Time in seconds:\n");
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
 
 	cudaMemcpy(w_outputFromGpu, w_gpu, sizeof(DATA_TYPE) * N, cudaMemcpyDeviceToHost);
 	
@@ -252,60 +240,80 @@ void gemverCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* x, DATA_TYPE* y, DATA_TYP
 	cudaFree(u1_gpu);
 	cudaFree(u2_gpu);
 }
+
+
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static
+void print_array(int n,
+		 DATA_TYPE POLYBENCH_1D(w,N,n))
+{
+  int i;
+
+  for (i = 0; i < n; i++) {
+    fprintf (stderr, DATA_PRINTF_MODIFIER, w[i]);
+    if (i % 20 == 0) fprintf (stderr, "\n");
+  }
+}
 	
 
 int main(int argc, char *argv[])
 {
-	double t_start, t_end;
-
-	DATA_TYPE* A;
-	DATA_TYPE* B;  
-	DATA_TYPE* w;  
-	DATA_TYPE* w_outputFromGpu;  
-	DATA_TYPE* x;  
-	DATA_TYPE* y;
-	DATA_TYPE* z;
-	DATA_TYPE* u1;
-	DATA_TYPE* u2;
-	DATA_TYPE* v1;
-	DATA_TYPE* v2;
-
-	A = (DATA_TYPE*)malloc(N*N*sizeof(DATA_TYPE));
-	B = (DATA_TYPE*)malloc(N*N*sizeof(DATA_TYPE));  
-	w = (DATA_TYPE*)malloc(N*sizeof(DATA_TYPE));  
-	w_outputFromGpu = (DATA_TYPE*)malloc(N*sizeof(DATA_TYPE));  
-	x = (DATA_TYPE*)malloc(N*sizeof(DATA_TYPE));  
-	y = (DATA_TYPE*)malloc(N*sizeof(DATA_TYPE));
-	z = (DATA_TYPE*)malloc(N*sizeof(DATA_TYPE));
-	u1 = (DATA_TYPE*)malloc(N*sizeof(DATA_TYPE));
-	u2 = (DATA_TYPE*)malloc(N*sizeof(DATA_TYPE));
-	v1 = (DATA_TYPE*)malloc(N*sizeof(DATA_TYPE));
-	v2 = (DATA_TYPE*)malloc(N*sizeof(DATA_TYPE));
+	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,N,N,n,n);
+  	POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,N,N,n,n);
+  	POLYBENCH_1D_ARRAY_DECL(w,DATA_TYPE,N,n);
+  	POLYBENCH_1D_ARRAY_DECL(w_outputFromGpu,DATA_TYPE,N,n);
+  	POLYBENCH_1D_ARRAY_DECL(x,DATA_TYPE,N,n);
+  	POLYBENCH_1D_ARRAY_DECL(y,DATA_TYPE,N,n);
+  	POLYBENCH_1D_ARRAY_DECL(z,DATA_TYPE,N,n);
+  	POLYBENCH_1D_ARRAY_DECL(u1,DATA_TYPE,N,n);
+  	POLYBENCH_1D_ARRAY_DECL(u2,DATA_TYPE,N,n);
+  	POLYBENCH_1D_ARRAY_DECL(v1,DATA_TYPE,N,n);
+  	POLYBENCH_1D_ARRAY_DECL(v2,DATA_TYPE,N,n);
 	
-	init(A, B, x, y, z, w, v1, v2, u1, u2);
+	init(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(z), 
+		POLYBENCH_ARRAY(w), POLYBENCH_ARRAY(v1), POLYBENCH_ARRAY(v2), POLYBENCH_ARRAY(u1), POLYBENCH_ARRAY(u2));
 	
 	GPU_argv_init();
-	gemverCuda(A, B, x, y, z, w, v1, v2, u1, u2, w_outputFromGpu);
-	
-	t_start = rtclock();
-	gemver(A, B, x, y, z, w, v1, v2, u1, u2);
-	t_end = rtclock();
-	fprintf(stdout, "CPU Runtime: %0.6lfs\n", t_end - t_start);
-	
-	compareResults(w, w_outputFromGpu);
 
-	free(A);
-	free(B);  
-	free(w);  
-	free(w_outputFromGpu);  
-	free(x);  
-	free(y);
-	free(z);
-	free(u1);
-	free(u2);
-	free(v1);
-	free(v2);
+	gemverCuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(z), 
+		POLYBENCH_ARRAY(w), POLYBENCH_ARRAY(v1), POLYBENCH_ARRAY(v2), POLYBENCH_ARRAY(u1), POLYBENCH_ARRAY(u2), 
+		POLYBENCH_ARRAY(w_outputFromGpu));
+
+	#ifdef RUN_ON_CPU
+
+	 	/* Start timer. */
+	  	polybench_start_instruments;
+	
+		gemver(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(z), 
+			POLYBENCH_ARRAY(w), POLYBENCH_ARRAY(v1), POLYBENCH_ARRAY(v2), POLYBENCH_ARRAY(u1), POLYBENCH_ARRAY(u2));
+
+		/* Stop and print timer. */
+		printf("CPU Time in seconds:\n");
+  		polybench_stop_instruments;
+ 		polybench_print_instruments;
+		
+		compareResults(POLYBENCH_ARRAY(w), POLYBENCH_ARRAY(w_outputFromGpu));
+
+	#else //print output to stderr so no dead code elimination
+
+		print_array(N, POLYBENCH_ARRAY(w_outputFromGpu));
+
+	#endif //RUN_ON_CPU
+
+	POLYBENCH_FREE_ARRAY(A);
+	POLYBENCH_FREE_ARRAY(B);  
+	POLYBENCH_FREE_ARRAY(w);  
+	POLYBENCH_FREE_ARRAY(w_outputFromGpu);  
+	POLYBENCH_FREE_ARRAY(x);  
+	POLYBENCH_FREE_ARRAY(y);
+	POLYBENCH_FREE_ARRAY(z);
+	POLYBENCH_FREE_ARRAY(u1);
+	POLYBENCH_FREE_ARRAY(u2);
+	POLYBENCH_FREE_ARRAY(v1);
+	POLYBENCH_FREE_ARRAY(v2);
 
  	return 0;
 }
 
+#include "../../common/polybench.c"

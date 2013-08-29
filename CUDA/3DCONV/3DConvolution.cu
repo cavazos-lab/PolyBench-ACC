@@ -3,6 +3,7 @@
  *
  *
  * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
  * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
  * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
  */
@@ -16,6 +17,10 @@
 #include <string.h>
 #include <cuda.h>
 
+#define POLYBENCH_TIME 1
+
+#include "3DConvolution.cuh"
+#include "../../common/polybench.h"
 #include "../../common/polybenchUtilFuncts.h"
 
 //define the error threshold for the results "not matching"
@@ -23,21 +28,10 @@
 
 #define GPU_DEVICE 0
 
-/* Problem size */
-#define NI 256
-#define NJ 256
-#define NK 256
-
-/* Thread block dimensions */
-#define DIM_THREAD_BLOCK_X 32
-#define DIM_THREAD_BLOCK_Y 8
-
-/* Can switch DATA_TYPE between float and double */
-typedef float DATA_TYPE;
+//#define RUN_ON_CPU
 
 
-
-void conv3D(DATA_TYPE* A, DATA_TYPE* B)
+void conv3D(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk))
 {
 	int i, j, k;
 	DATA_TYPE c11, c12, c13, c21, c22, c23, c31, c32, c33;
@@ -53,21 +47,21 @@ void conv3D(DATA_TYPE* A, DATA_TYPE* B)
 			for (k = 1; k < NK -1; ++k) // 2
 			{
 				//printf("i:%d\nj:%d\nk:%d\n", i, j, k);
-				B[i*(NK * NJ) + j*NK + k] = c11 * A[(i - 1)*(NK * NJ) + (j - 1)*NK + (k - 1)]  +  c13 * A[(i + 1)*(NK * NJ) + (j - 1)*NK + (k - 1)]
-					     +   c21 * A[(i - 1)*(NK * NJ) + (j - 1)*NK + (k - 1)]  +  c23 * A[(i + 1)*(NK * NJ) + (j - 1)*NK + (k - 1)]
-					     +   c31 * A[(i - 1)*(NK * NJ) + (j - 1)*NK + (k - 1)]  +  c33 * A[(i + 1)*(NK * NJ) + (j - 1)*NK + (k - 1)]
-					     +   c12 * A[(i + 0)*(NK * NJ) + (j - 1)*NK + (k + 0)]  +  c22 * A[(i + 0)*(NK * NJ) + (j + 0)*NK + (k + 0)]   
-					     +   c32 * A[(i + 0)*(NK * NJ) + (j + 1)*NK + (k + 0)]  +  c11 * A[(i - 1)*(NK * NJ) + (j - 1)*NK + (k + 1)]  
-					     +   c13 * A[(i + 1)*(NK * NJ) + (j - 1)*NK + (k + 1)]  +  c21 * A[(i - 1)*(NK * NJ) + (j + 0)*NK + (k + 1)]  
-					     +   c23 * A[(i + 1)*(NK * NJ) + (j + 0)*NK + (k + 1)]  +  c31 * A[(i - 1)*(NK * NJ) + (j + 1)*NK + (k + 1)]  
-					     +   c33 * A[(i + 1)*(NK * NJ) + (j + 1)*NK + (k + 1)];
+				B[i][j][k] = c11 * A[(i - 1)][(j - 1)][(k - 1)]  +  c13 * A[(i + 1)][(j - 1)][(k - 1)]
+					     +   c21 * A[(i - 1)][(j - 1)][(k - 1)]  +  c23 * A[(i + 1)][(j - 1)][(k - 1)]
+					     +   c31 * A[(i - 1)][(j - 1)][(k - 1)]  +  c33 * A[(i + 1)][(j - 1)][(k - 1)]
+					     +   c12 * A[(i + 0)][(j - 1)][(k + 0)]  +  c22 * A[(i + 0)][(j + 0)][(k + 0)]   
+					     +   c32 * A[(i + 0)][(j + 1)][(k + 0)]  +  c11 * A[(i - 1)][(j - 1)][(k + 1)]  
+					     +   c13 * A[(i + 1)][(j - 1)][(k + 1)]  +  c21 * A[(i - 1)][(j + 0)][(k + 1)]  
+					     +   c23 * A[(i + 1)][(j + 0)][(k + 1)]  +  c31 * A[(i - 1)][(j + 1)][(k + 1)]  
+					     +   c33 * A[(i + 1)][(j + 1)][(k + 1)];
 			}
 		}
 	}
 }
 
 
-void init(DATA_TYPE* A)
+void init(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk))
 {
 	int i, j, k;
 
@@ -77,14 +71,14 @@ void init(DATA_TYPE* A)
 		{
 			for (k = 0; k < NK; ++k)
 			{
-				A[i*(NK * NJ) + j*NK + k] = i % 12 + 2 * (j % 7) + 3 * (k % 13);
+				A[i][j][k] = i % 12 + 2 * (j % 7) + 3 * (k % 13);
 			}
 		}
 	}
 }
 
 
-void compareResults(DATA_TYPE* B, DATA_TYPE* B_outputFromGpu)
+void compareResults(DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B_outputFromGpu, NI, NJ, NK, ni, nj, nk))
 {
 	int i, j, k, fail;
 	fail = 0;
@@ -96,7 +90,7 @@ void compareResults(DATA_TYPE* B, DATA_TYPE* B_outputFromGpu)
 		{
 			for (k = 1; k < NK - 1; ++k) // 2
 			{
-				if (percentDiff(B[i*(NK * NJ) + j*NK + k], B_outputFromGpu[i*(NK * NJ) + j*NK + k]) > PERCENT_DIFF_ERROR_THRESHOLD)
+				if (percentDiff(B[i][j][k], B_outputFromGpu[i][j][k]) > PERCENT_DIFF_ERROR_THRESHOLD)
 				{
 					fail++;
 				}
@@ -118,7 +112,7 @@ void GPU_argv_init()
 }
 
 
-__global__ void convolution3D_kernel(DATA_TYPE *A, DATA_TYPE *B, int i)
+__global__ void convolution3D_kernel(DATA_TYPE* A, DATA_TYPE* B, int i)
 {
 	int k = blockIdx.x * blockDim.x + threadIdx.x;
 	int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -144,10 +138,8 @@ __global__ void convolution3D_kernel(DATA_TYPE *A, DATA_TYPE *B, int i)
 }
 
 
-void convolution3DCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* B_outputFromGpu)
+void convolution3DCuda(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B_outputFromGpu, NI, NJ, NK, ni, nj, nk))
 {
-	double t_start, t_end;
-
 	DATA_TYPE *A_gpu;
 	DATA_TYPE *B_gpu;
 
@@ -156,11 +148,12 @@ void convolution3DCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* B_outputFromGpu)
 	cudaMemcpy(A_gpu, A, sizeof(DATA_TYPE) * NI * NJ * NK, cudaMemcpyHostToDevice);
 	cudaMemcpy(B_gpu, B, sizeof(DATA_TYPE) * NI * NJ * NK, cudaMemcpyHostToDevice);
 	
-	
 	dim3 block(DIM_THREAD_BLOCK_X, DIM_THREAD_BLOCK_Y);
 	dim3 grid((size_t)(ceil( ((float)NK) / ((float)block.x) )), (size_t)(ceil( ((float)NJ) / ((float)block.y) )));
 	
-	t_start = rtclock();
+	/* Start timer. */
+  	polybench_start_instruments;
+
 	int i;
 	for (i = 1; i < NI - 1; ++i) // 0
 	{
@@ -168,8 +161,9 @@ void convolution3DCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* B_outputFromGpu)
 	}
 
 	cudaThreadSynchronize();
-	t_end = rtclock();
-	fprintf(stdout, "GPU Runtime: %0.6lfs\n", t_end - t_start);
+	printf("GPU Time in seconds:\n");
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
 	
 	cudaMemcpy(B_outputFromGpu, B_gpu, sizeof(DATA_TYPE) * NI * NJ * NK, cudaMemcpyDeviceToHost);
 	
@@ -178,35 +172,63 @@ void convolution3DCuda(DATA_TYPE* A, DATA_TYPE* B, DATA_TYPE* B_outputFromGpu)
 }
 
 
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static
+void print_array(int ni, int nj, int nk,
+		 DATA_TYPE POLYBENCH_3D(B,NI,NJ,NK,ni,nj,nk))
+{
+  int i, j, k;
+
+  for (i = 0; i < ni; i++)
+    for (j = 0; j < nj; j++) 
+	for (k = 0; k < nk; k++)
+	{
+	fprintf (stderr, DATA_PRINTF_MODIFIER, B[i][j][k]);
+	if ((i * (nj*nk) + j*nk + k) % 20 == 0) fprintf (stderr, "\n");
+    }
+  fprintf (stderr, "\n");
+}
+
+
 int main(int argc, char *argv[])
 {
-	double t_start, t_end;
+	POLYBENCH_3D_ARRAY_DECL(A,DATA_TYPE,NI,NJ,NK,ni,nj,nk);
+	POLYBENCH_3D_ARRAY_DECL(B,DATA_TYPE,NI,NJ,NK,ni,nj,nk);
+	POLYBENCH_3D_ARRAY_DECL(B_outputFromGpu,DATA_TYPE,NI,NJ,NK,ni,nj,nk);
 
-	DATA_TYPE* A;
-	DATA_TYPE* B;
-	DATA_TYPE* B_outputFromGpu;
-
-	A = (DATA_TYPE*)malloc(NI*NJ*NK*sizeof(DATA_TYPE));
-	B = (DATA_TYPE*)malloc(NI*NJ*NK*sizeof(DATA_TYPE));
-	B_outputFromGpu = (DATA_TYPE*)malloc(NI*NJ*NK*sizeof(DATA_TYPE));
-	
-	init(A);
+	init(POLYBENCH_ARRAY(A));
 	
 	GPU_argv_init();
 
-	convolution3DCuda(A, B, B_outputFromGpu);
+	convolution3DCuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
 
-	t_start = rtclock();
-	conv3D(A, B);
-	t_end = rtclock();
-	fprintf(stdout, "CPU Runtime: %0.6lfs\n", t_end - t_start);
+	#ifdef RUN_ON_CPU
+
+		/* Start timer. */
+	  	polybench_start_instruments;
+
+		conv3D(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
+
+		printf("CPU Time in seconds:\n");
+	  	polybench_stop_instruments;
+	 	polybench_print_instruments;
 	
-	compareResults(B, B_outputFromGpu);
+		compareResults(POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
 
-	free(A);
-	free(B);
-	free(B_outputFromGpu);
+	#else //print output to stderr so no dead code elimination
+
+		print_array(NI, NJ, NK, POLYBENCH_ARRAY(B_outputFromGpu));
+
+	#endif //RUN_ON_CPU
+
+
+	POLYBENCH_FREE_ARRAY(A);
+	POLYBENCH_FREE_ARRAY(B);
+	POLYBENCH_FREE_ARRAY(B_outputFromGpu);
 
     	return 0;
 }
+
+#include "../../common/polybench.c"
 

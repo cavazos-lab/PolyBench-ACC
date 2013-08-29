@@ -1,2 +1,4 @@
-all:
-	nvcc -O3 adi.cu -o adi.exe
+EXECUTABLE := adi.exe
+CUFILES := adi.cu
+
+include ../common.mk
