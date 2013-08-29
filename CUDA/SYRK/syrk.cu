@@ -3,6 +3,7 @@
  *
  *
  * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
  * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
  * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
  */
@@ -15,6 +16,10 @@
 #include <sys/time.h>
 #include <cuda.h>
 
+#define POLYBENCH_TIME 1
+
+#include "syrk.cuh"
+#include "../../common/polybench.h"
 #include "../../common/polybenchUtilFuncts.h"
 
 //define the error threshold for the results "not matching"
@@ -22,24 +27,14 @@
 
 #define GPU_DEVICE 0
 
-/* Problem size */
-#define N 1024
-#define M 1024
-
-/* Thread block dimensions */
-#define DIM_THREAD_BLOCK_X 32
-#define DIM_THREAD_BLOCK_Y 8
-
 /* Declared constant values for alpha and beta (same as values in PolyBench 2.0) */
 #define alpha 12435
 #define beta 4546
 
-/* Can switch DATA_TYPE between float and double */
-typedef float DATA_TYPE;
+//#define RUN_ON_CPU
 
 
-
-void init_arrays(DATA_TYPE* A, DATA_TYPE* C)
+void init_arrays(DATA_TYPE POLYBENCH_2D(A, N, M, n, m), DATA_TYPE POLYBENCH_2D(C, N, M, n, m))
 {
 	int i, j;
 	
@@ -47,18 +42,18 @@ void init_arrays(DATA_TYPE* A, DATA_TYPE* C)
     	{
 		for (j = 0; j < M; j++)
 		{
-			A[i*M + j] = ((DATA_TYPE) i*j) / N;
+			A[i][j] = ((DATA_TYPE) i*j) / N;
 		}
 		
 		for (j = 0; j < N; j++)
 		{
-			C[i*M + j] = ((DATA_TYPE) i*j + 2) / N;
+			C[i][j] = ((DATA_TYPE) i*j + 2) / N;
 		}
 	}
 }
 
 
-void syrk(DATA_TYPE* A, DATA_TYPE* C)
+void syrk(DATA_TYPE POLYBENCH_2D(A, N, M, n, m), DATA_TYPE POLYBENCH_2D(C, N, M, n, m))
 {
 	int i, j, k;
 	
@@ -67,7 +62,7 @@ void syrk(DATA_TYPE* A, DATA_TYPE* C)
 	{
 		for (j = 0; j < N; j++)
 		{
-			C[i*M + j] *= beta;
+			C[i][j] *= beta;
 		}
 	}
 	
@@ -77,14 +72,14 @@ void syrk(DATA_TYPE* A, DATA_TYPE* C)
 		{
 			for (k = 0; k < M; k++)
 			{
-				C[i*N + j] += alpha * A[i*M + k] * A[j*M + k];
+				C[i][j] += alpha * A[i][k] * A[j][k];
 			}
 		}
 	}
 }
 
 
-void compareResults(DATA_TYPE* C, DATA_TYPE* C_outputFromGpu)
+void compareResults(DATA_TYPE POLYBENCH_2D(C, N, M, n, m), DATA_TYPE POLYBENCH_2D(C_outputFromGpu, N, M, n, m))
 {
 	int i,j,fail;
 	fail = 0;
@@ -94,7 +89,7 @@ void compareResults(DATA_TYPE* C, DATA_TYPE* C_outputFromGpu)
 	{
 		for (j=0; j<M; j++)
 		{
-			if (percentDiff(C[i*M + j], C_outputFromGpu[i*M + j]) > PERCENT_DIFF_ERROR_THRESHOLD)
+			if (percentDiff(C[i][j], C_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD)
 			{
 				fail++;
 			}
@@ -135,10 +130,8 @@ __global__ void syrk_kernel(DATA_TYPE ALPHA, DATA_TYPE BETA, DATA_TYPE *a, DATA_
 }
 
 
-void syrkCuda(DATA_TYPE* A, DATA_TYPE* C, DATA_TYPE* C_outputFromGpu)
+void syrkCuda(DATA_TYPE POLYBENCH_2D(A, N, M, n, m), DATA_TYPE POLYBENCH_2D(C, N, M, n, m), DATA_TYPE POLYBENCH_2D(C_outputFromGpu, N, M, n, m))
 {
-	double t_start, t_end;
-
 	DATA_TYPE* A_gpu;
 	DATA_TYPE* C_gpu;
 
@@ -149,11 +142,17 @@ void syrkCuda(DATA_TYPE* A, DATA_TYPE* C, DATA_TYPE* C_outputFromGpu)
 	
 	dim3 block(DIM_THREAD_BLOCK_X, DIM_THREAD_BLOCK_Y);
 	dim3 grid((size_t)(ceil(((float)N) / ((float)DIM_THREAD_BLOCK_X))), (size_t)ceil(((float)N) / ((float)DIM_THREAD_BLOCK_Y)));
-	t_start = rtclock();
+
+	/* Start timer. */
+  	polybench_start_instruments;
+
 	syrk_kernel<<<grid,block>>>(alpha, beta, A_gpu,C_gpu);
 	cudaThreadSynchronize();
-	t_end = rtclock();
-	fprintf(stdout, "GPU Runtime: %0.6lfs\n", t_end - t_start);
+
+	/* Stop and print timer. */
+	printf("GPU Time in seconds:\n");
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
 
 	cudaMemcpy(C_outputFromGpu, C_gpu, sizeof(DATA_TYPE) * N * N, cudaMemcpyDeviceToHost);
 
@@ -162,34 +161,61 @@ void syrkCuda(DATA_TYPE* A, DATA_TYPE* C, DATA_TYPE* C_outputFromGpu)
 }
 
 
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static
+void print_array(int n, int m,
+		 DATA_TYPE POLYBENCH_2D(C,N,M,n,m))
+{
+  int i, j;
+
+  for (i = 0; i < n; i++)
+    for (j = 0; j < m; j++) {
+	fprintf (stderr, DATA_PRINTF_MODIFIER, C[i][j]);
+	if ((i * n + j) % 20 == 0) fprintf (stderr, "\n");
+    }
+  fprintf (stderr, "\n");
+}
+
+
 int main()
 {
-	double t_start, t_end;
+	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,N,M,n,m);
+  	POLYBENCH_2D_ARRAY_DECL(C,DATA_TYPE,N,M,n,m);
+  	POLYBENCH_2D_ARRAY_DECL(C_outputFromGpu,DATA_TYPE,N,M,n,m);
 
-	DATA_TYPE* A;
-	DATA_TYPE* C;
-	DATA_TYPE* C_outputFromGpu;
-
-	A = (DATA_TYPE*)malloc(N*M*sizeof(DATA_TYPE));
-	C = (DATA_TYPE*)malloc(N*M*sizeof(DATA_TYPE));
-	C_outputFromGpu = (DATA_TYPE*)malloc(N*M*sizeof(DATA_TYPE));
-
-	init_arrays(A, C);
+	init_arrays(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(C));
 	
 	GPU_argv_init();	
-	syrkCuda(A, C, C_outputFromGpu);
+	syrkCuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(C_outputFromGpu));
 
-	t_start = rtclock();
-	syrk(A, C);
-	t_end = rtclock();
-	fprintf(stdout, "CPU Runtime: %0.6lfs\n", t_end - t_start);
+	#ifdef RUN_ON_CPU
 
-	compareResults(C, C_outputFromGpu);
+		/* Start timer. */
+	  	polybench_start_instruments;
 
-	free(A);
-	free(C);
-	free(C_outputFromGpu);
+		syrk(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(C));
+
+		/* Stop and print timer. */
+		printf("CPU Time in seconds:\n");
+  		polybench_stop_instruments;
+ 		polybench_print_instruments;
+
+		compareResults(POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(C_outputFromGpu));
+
+	#else //print output to stderr so no dead code elimination
+
+		print_array(N, M, POLYBENCH_ARRAY(C_outputFromGpu));
+
+	#endif //RUN_ON_CPU
+
+
+	POLYBENCH_FREE_ARRAY(A);
+  	POLYBENCH_FREE_ARRAY(C);
+	POLYBENCH_FREE_ARRAY(C_outputFromGpu);
 
 	return 0;
 }
+
+#include "../../common/polybench.c"
 
