@@ -3,6 +3,7 @@
  *
  *
  * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
  * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
  * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
  */
@@ -45,7 +46,7 @@ __kernel void fdtd_kernel2(__global DATA_TYPE *ex, __global DATA_TYPE *ey, __glo
 	
 	if ((i < nx) && (j < ny) && (j > 0))
 	{
-		ex[i * (ny+1) + j] = ex[i * (ny+1) + j] - 0.5*(hz[i * ny + j] - hz[i * ny + (j-1)]);
+		ex[i * ny + j] = ex[i * ny + j] - 0.5*(hz[i * ny + j] - hz[i * ny + (j-1)]);
 	}
 }
 
@@ -55,9 +56,9 @@ __kernel void fdtd_kernel3(__global DATA_TYPE *ex, __global DATA_TYPE *ey, __glo
 	int j = get_global_id(0);
 	int i = get_global_id(1);
 	
-	if ((i < nx) && (j < ny))
+	if ((i < (nx-1)) && (j < (ny-1)))
 	{
-		hz[i * ny + j] = hz[i * ny + j] - 0.7*(ex[i * (ny+1) + (j+1)] - ex[i * (ny+1) + j] + ey[(i + 1) * ny + j] - ey[i * ny + j]);
+		hz[i * ny + j] = hz[i * ny + j] - 0.7*(ex[i * ny + (j+1)] - ex[i * ny + j] + ey[(i + 1) * ny + j] - ey[i * ny + j]);
 	}
 }
 
