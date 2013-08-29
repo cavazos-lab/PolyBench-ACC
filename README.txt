@@ -53,8 +53,7 @@ FDTD-2D
 JACOBI-1D
 JACOBI-2D
 
-The CUDA, OpenCL, and HMPP codes are based on PolyBench 2.0 (with the exception of convolution which isn't part of PolyBench 2.0).
-The OpenACC codes are based on PolyBench 3.2.
+The CUDA, OpenCL, HMPP, and OpenACC codes are based on PolyBench 3.2.
 
 
 --------------------------------------------------------------------------------------------
