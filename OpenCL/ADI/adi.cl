@@ -1,18 +1,12 @@
-/*********************************************************************************/
-//
-// Polybench kernels implementation on OpenCL GPU
-//
-// Computer & Information Science, University of Delaware
-// Author(s):   Sudhee Ayalasomayajula (sudhee1@gmail.com)
-//              John Cavazos (cavazos@cis.udel.edu)
-//		Scott Grauer Gray(sgrauerg@gmail.com)
-//              Robert Searles (rsearles35@aol.com)   
-//              Lifan Xu (xulifan@udel.edu)
-//
-// Contact(s): Lifan Xu (xulifan@udel.edu)
-// Reference(s):
-//
-/*********************************************************************************/
+/**
+ * adi.cl: This file is part of the PolyBench/GPU 1.0 test suite.
+ *
+ *
+ * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
+ * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
+ * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
+ */
 
 #if defined(cl_khr_fp64)  // Khronos extension available?
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
@@ -94,7 +88,7 @@ __kernel void adi_kernel6(__global DATA_TYPE* A, __global DATA_TYPE* B, __global
 	
 	if ((i2 < N))
 	{
-	  X[(N-2-i1)*N + i2] = (X[(N-2-i1)*N + i2] - X[(N-i1-3)*N + i2] * A[(N-3-i1)*N + i2]) / B[(N-2-i1)*N + i2];
+	     X[(N-2-i1)*N + i2] = (X[(N-2-i1)*N + i2] - X[(N-i1-3)*N + i2] * A[(N-3-i1)*N + i2]) / B[(N-2-i1)*N + i2];
 	}
 }
 

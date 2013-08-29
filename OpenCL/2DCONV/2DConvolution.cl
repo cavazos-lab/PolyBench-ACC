@@ -3,6 +3,7 @@
  *
  *
  * Contact: Scott Grauer-Gray <sgrauerg@gmail.com>
+ * Will Killian <killian@udel.edu>
  * Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>
  * Web address: http://www.cse.ohio-state.edu/~pouchet/software/polybench/GPU
  */
