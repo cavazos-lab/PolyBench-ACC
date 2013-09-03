@@ -46,6 +46,7 @@
 # endif /* !N */
 
 # define _PB_N POLYBENCH_LOOP_BOUND(N,n)
+# define _PB_TSTEPS POLYBENCH_LOOP_BOUND(TSTEPS,tsteps)
 
 # ifndef DATA_TYPE
 #  define DATA_TYPE float

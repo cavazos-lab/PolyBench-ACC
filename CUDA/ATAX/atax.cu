@@ -32,30 +32,30 @@
 #define M_PI 3.14159
 #endif
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void init_array(DATA_TYPE POLYBENCH_1D(x,NX,nx), DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny))
+void init_array(int nx, int ny, DATA_TYPE POLYBENCH_1D(x,NX,nx), DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny))
 {
 	int i, j;
 
-	for (i = 0; i < NX; i++)
+	for (i = 0; i < nx; i++)
 	{
 		x[i] = i * M_PI;
-		for (j = 0; j < NY; j++)
+		for (j = 0; j < ny; j++)
 		{
-			A[i][j] = ((DATA_TYPE) i*(j)) / NX;
+			A[i][j] = ((DATA_TYPE) i*j) / NX;
 		}
 	}
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_1D(z,NY,ny), DATA_TYPE POLYBENCH_1D(z_outputFromGpu,NY,ny))
+void compareResults(int ny, DATA_TYPE POLYBENCH_1D(z,NY,ny), DATA_TYPE POLYBENCH_1D(z_outputFromGpu,NY,ny))
 {
 	int i, fail;
 	fail = 0;
 
-	for (i=0; i<NY; i++)
+	for (i=0; i<ny; i++)
 	{
 		if (percentDiff(z[i], z_outputFromGpu[i]) > PERCENT_DIFF_ERROR_THRESHOLD)
 		{
@@ -77,28 +77,30 @@ void GPU_argv_init()
 }
 
 
-__global__ void atax_kernel1(DATA_TYPE *A, DATA_TYPE *x, DATA_TYPE *tmp)
+__global__ void atax_kernel1(int nx, int ny, DATA_TYPE *A, DATA_TYPE *x, DATA_TYPE *tmp)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (i < NX)
+	if (i < _PB_NX)
 	{
+		tmp[i] = 0;
 		int j;
-		for(j=0; j < NY; j++)
+		for(j=0; j < _PB_NY; j++)
 		{
 			tmp[i] += A[i*NY+j] * x[j];
 		}
 	}
 }
 
-__global__ void atax_kernel2(DATA_TYPE *A, DATA_TYPE *y, DATA_TYPE *tmp)
+__global__ void atax_kernel2(int nx, int ny, DATA_TYPE *A, DATA_TYPE *y, DATA_TYPE *tmp)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	if (j < NY)
+	if (j < _PB_NY)
 	{
+		y[j] = 0;
 		int i;
-		for(i=0; i < NX; i++)
+		for(i=0; i < _PB_NX; i++)
 		{
 			y[j] += A[i*NY+j] * tmp[i];
 		}
@@ -106,25 +108,26 @@ __global__ void atax_kernel2(DATA_TYPE *A, DATA_TYPE *y, DATA_TYPE *tmp)
 }
 
 
-void atax_cpu(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(x,NY,ny), DATA_TYPE POLYBENCH_1D(y,NY,ny), DATA_TYPE POLYBENCH_1D(tmp,NX,nx))
+void atax_cpu(int nx, int ny, DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(x,NY,ny), DATA_TYPE POLYBENCH_1D(y,NY,ny), 
+		DATA_TYPE POLYBENCH_1D(tmp,NX,nx))
 {
 	int i,j;
 	
-	for (i= 0; i < NY; i++)
+	for (i= 0; i < _PB_NY; i++)
 	{
     		y[i] = 0;
 	}
   
-	for (i = 0; i < NX; i++)
+	for (i = 0; i < _PB_NX; i++)
  	{
       		tmp[i] = 0;
 
-      		for (j = 0; j < NY; j++)
+      		for (j = 0; j < _PB_NY; j++)
 		{
 			tmp[i] = tmp[i] + A[i][j] * x[j];
 		}
 		
-      		for (j = 0; j < NY; j++)
+      		for (j = 0; j < _PB_NY; j++)
 		{
 			y[j] = y[j] + A[i][j] * tmp[i];
 		}
@@ -132,7 +135,7 @@ void atax_cpu(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(x,NY
 }
 
 
-void ataxGpu(DATA_TYPE POLYBENCH_2D(A, NX, NY,nx,ny), DATA_TYPE POLYBENCH_1D(x,NX,nx), DATA_TYPE POLYBENCH_1D(y,NY,ny), 
+void ataxGpu(int nx, int ny, DATA_TYPE POLYBENCH_2D(A, NX, NY,nx,ny), DATA_TYPE POLYBENCH_1D(x,NX,nx), DATA_TYPE POLYBENCH_1D(y,NY,ny), 
 		DATA_TYPE POLYBENCH_1D(tmp,NX,nx), DATA_TYPE POLYBENCH_1D(y_outputFromGpu,NY,ny))
 {
 	DATA_TYPE *A_gpu;
@@ -157,9 +160,9 @@ void ataxGpu(DATA_TYPE POLYBENCH_2D(A, NX, NY,nx,ny), DATA_TYPE POLYBENCH_1D(x,N
 	/* Start timer. */
   	polybench_start_instruments;
 
-	atax_kernel1<<< grid1, block >>>(A_gpu,x_gpu,tmp_gpu);
+	atax_kernel1<<< grid1, block >>>(nx, ny, A_gpu,x_gpu,tmp_gpu);
 	cudaThreadSynchronize();
-	atax_kernel2<<< grid2, block >>>(A_gpu,y_gpu,tmp_gpu);
+	atax_kernel2<<< grid2, block >>>(nx, ny, A_gpu,y_gpu,tmp_gpu);
 	cudaThreadSynchronize();
 	
 	/* Stop and print timer. */
@@ -193,16 +196,19 @@ void print_array(int nx, DATA_TYPE POLYBENCH_1D(y,NX,nx))
 
 int main(int argc, char** argv)
 {
+	int nx = NX;
+	int ny = NY;
+
 	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NX,NY,nx,ny);
 	POLYBENCH_1D_ARRAY_DECL(x,DATA_TYPE,NY,ny);
 	POLYBENCH_1D_ARRAY_DECL(y,DATA_TYPE,NY,ny);
 	POLYBENCH_1D_ARRAY_DECL(y_outputFromGpu,DATA_TYPE,NY,ny);
 	POLYBENCH_1D_ARRAY_DECL(tmp,DATA_TYPE,NX,nx);
 
-	init_array(POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(A));
+	init_array(nx, ny, POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(A));
 
 	GPU_argv_init();
-	ataxGpu(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(tmp), 
+	ataxGpu(nx, ny, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(tmp), 
 		POLYBENCH_ARRAY(y_outputFromGpu));
 	
 	#ifdef RUN_ON_CPU
@@ -210,18 +216,18 @@ int main(int argc, char** argv)
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		atax_cpu(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(tmp));
+		atax_cpu(nx, ny, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(x), POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(tmp));
 
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 
-		compareResults(POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(y_outputFromGpu));
+		compareResults(ny, POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(y_outputFromGpu));
 
 	#else
 
-		print_array(NY, POLYBENCH_ARRAY(y_outputFromGpu));
+		print_array(ny, POLYBENCH_ARRAY(y_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

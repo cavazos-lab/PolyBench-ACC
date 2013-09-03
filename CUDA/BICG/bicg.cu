@@ -30,38 +30,38 @@
 #define M_PI 3.14159
 #endif
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void init_array(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx))
+void init_array(int nx, int ny, DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx))
 {
 	int i, j;
+	
+	for (i = 0; i < ny; i++)
+	{
+    		p[i] = i * M_PI;
+	}
 
-  	for (i = 0; i < NX; i++)
+	for (i = 0; i < nx; i++)
 	{
     		r[i] = i * M_PI;
 
-    		for (j = 0; j < NY; j++)
+    		for (j = 0; j < ny; j++)
 		{
       			A[i][j] = ((DATA_TYPE) i*j) / NX;
 		}
  	}
-	
-	for (i = 0; i < NY; i++)
-	{
-    		p[i] = i * M_PI;
-	}
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE POLYBENCH_1D(s_outputFromGpu,NY,ny), 
+void compareResults(int nx, int ny, DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE POLYBENCH_1D(s_outputFromGpu,NY,ny), 
 		DATA_TYPE POLYBENCH_1D(q,NX,nx), DATA_TYPE POLYBENCH_1D(q_outputFromGpu,NX,nx))
 {
 	int i,fail;
 	fail = 0;
 
 	// Compare s with s_cuda
-	for (i=0; i<NX; i++)
+	for (i=0; i<nx; i++)
 	{
 		if (percentDiff(q[i], q_outputFromGpu[i]) > PERCENT_DIFF_ERROR_THRESHOLD)
 		{
@@ -69,7 +69,7 @@ void compareResults(DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE POLYBENCH_1D(s_ou
 		}
 	}
 
-	for (i=0; i<NY; i++)
+	for (i=0; i<ny; i++)
 	{
 		if (percentDiff(s[i], s_outputFromGpu[i]) > PERCENT_DIFF_ERROR_THRESHOLD)
 		{
@@ -92,34 +92,34 @@ void GPU_argv_init()
 
 
 //Distributed (split) from initial loop and permuted into reverse order to allow parallelism...
-__global__ void bicg_kernel1(DATA_TYPE *A, DATA_TYPE *r, DATA_TYPE *s)
+__global__ void bicg_kernel1(int nx, int ny, DATA_TYPE *A, DATA_TYPE *r, DATA_TYPE *s)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	if (j < NY)
+	if (j < _PB_NY)
 	{
 		s[j] = 0.0f;
 
 		int i;
-		for(i = 0; i < NX; i++)
+		for(i = 0; i < _PB_NX; i++)
 		{
-			s[j] += A[i * NY + j] * r[i];
+			s[j] += r[i] * A[i * NY + j];
 		}
 	}	
 }
 
 
 //Distributed (split) from initial loop to allow parallelism
-__global__ void bicg_kernel2(DATA_TYPE *A, DATA_TYPE *p, DATA_TYPE *q)
+__global__ void bicg_kernel2(int nx, int ny, DATA_TYPE *A, DATA_TYPE *p, DATA_TYPE *q)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	if (i < NX)
+	if (i < _PB_NX)
 	{
 		q[i] = 0.0f;
 
 		int j;
-		for(j=0; j < NY; j++)
+		for(j=0; j < _PB_NY; j++)
 		{
 			q[i] += A[i * NY + j] * p[j];
 		}
@@ -127,19 +127,20 @@ __global__ void bicg_kernel2(DATA_TYPE *A, DATA_TYPE *p, DATA_TYPE *q)
 }
 
 
-void bicg_cpu(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx), DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(q,NX,nx))
+void bicg_cpu(int nx, int ny, DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx), DATA_TYPE POLYBENCH_1D(s,NY,ny), 
+		DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(q,NX,nx))
 {
 	int i,j;
 	
-  	for (i = 0; i < NY; i++)
+  	for (i = 0; i < _PB_NY; i++)
 	{
 		s[i] = 0.0;
 	}
 
-    for (i = 0; i < NX; i++)
-    {
+	for (i = 0; i < _PB_NX; i++)
+	{
 		q[i] = 0.0;
-		for (j = 0; j < NY; j++)
+		for (j = 0; j < _PB_NY; j++)
 	  	{
 	    		s[j] = s[j] + r[i] * A[i][j];
 	    		q[i] = q[i] + A[i][j] * p[j];
@@ -170,8 +171,9 @@ void print_array(int nx, int ny,
 }
 
 
-void bicgCuda(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx), DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE POLYBENCH_1D(p,NY,ny),
-	DATA_TYPE POLYBENCH_1D(q,NX,nx), DATA_TYPE POLYBENCH_1D(s_outputFromGpu,NY,ny), DATA_TYPE POLYBENCH_1D(q_outputFromGpu,NX,nx))
+void bicgCuda(int nx, int ny, DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx), DATA_TYPE POLYBENCH_1D(s,NY,ny), 
+	DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(q,NX,nx), DATA_TYPE POLYBENCH_1D(s_outputFromGpu,NY,ny), 
+	DATA_TYPE POLYBENCH_1D(q_outputFromGpu,NX,nx))
 {
 	DATA_TYPE *A_gpu;
 	DATA_TYPE *q_gpu;
@@ -197,9 +199,9 @@ void bicgCuda(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(r,NX
 	/* Start timer. */
   	polybench_start_instruments;
 
-	bicg_kernel1<<< grid1, block >>>(A_gpu, r_gpu, s_gpu);
+	bicg_kernel1<<< grid1, block >>>(nx, ny, A_gpu, r_gpu, s_gpu);
 	cudaThreadSynchronize();
-	bicg_kernel2<<< grid2, block >>>(A_gpu, p_gpu, q_gpu);
+	bicg_kernel2<<< grid2, block >>>(nx, ny, A_gpu, p_gpu, q_gpu);
 	cudaThreadSynchronize();
 
 	/* Stop and print timer. */
@@ -220,19 +222,22 @@ void bicgCuda(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(r,NX
 
 int main(int argc, char** argv)
 {
+	int nx = NX;
+	int ny = NY;
+
 	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NX,NY,nx,ny);
-	POLYBENCH_1D_ARRAY_DECL(r,DATA_TYPE,NX,nx);
 	POLYBENCH_1D_ARRAY_DECL(s,DATA_TYPE,NY,ny);
-	POLYBENCH_1D_ARRAY_DECL(p,DATA_TYPE,NY,ny);
 	POLYBENCH_1D_ARRAY_DECL(q,DATA_TYPE,NX,nx);
+	POLYBENCH_1D_ARRAY_DECL(p,DATA_TYPE,NY,ny);
+	POLYBENCH_1D_ARRAY_DECL(r,DATA_TYPE,NX,nx);
 	POLYBENCH_1D_ARRAY_DECL(s_outputFromGpu,DATA_TYPE,NY,ny);
 	POLYBENCH_1D_ARRAY_DECL(q_outputFromGpu,DATA_TYPE,NX,nx);
 
-	init_array(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(r));
+	init_array(nx, ny, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(r));
 
 	GPU_argv_init();
 
-	bicgCuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(r), POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(q), 
+	bicgCuda(nx, ny, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(r), POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(q), 
 		POLYBENCH_ARRAY(s_outputFromGpu), POLYBENCH_ARRAY(q_outputFromGpu));
 
 	#ifdef RUN_ON_CPU
@@ -240,19 +245,19 @@ int main(int argc, char** argv)
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		bicg_cpu(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(r), POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(q));
+		bicg_cpu(nx, ny, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(r), POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(q));
 
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 	
-		compareResults(POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(s_outputFromGpu), POLYBENCH_ARRAY(q), 
+		compareResults(nx, ny, POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(s_outputFromGpu), POLYBENCH_ARRAY(q), 
 			POLYBENCH_ARRAY(q_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(NX, NY, POLYBENCH_ARRAY(s_outputFromGpu), POLYBENCH_ARRAY(q_outputFromGpu));
+		print_array(nx, ny, POLYBENCH_ARRAY(s_outputFromGpu), POLYBENCH_ARRAY(q_outputFromGpu));
 	
 	#endif //RUN_ON_CPU
 

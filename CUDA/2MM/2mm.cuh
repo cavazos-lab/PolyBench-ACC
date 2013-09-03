@@ -34,10 +34,10 @@
 #  endif
 
 #  ifdef STANDARD_DATASET /* Default if unspecified. */
-# define NI 2048
-# define NJ 2048
-# define NK 2048
-# define NL 2048
+# define NI 1024
+# define NJ 1024
+# define NK 1024
+# define NL 1024
 #  endif
 
 #  ifdef LARGE_DATASET
@@ -55,7 +55,10 @@
 #  endif
 # endif /* !N */
 
-# define _PB_N POLYBENCH_LOOP_BOUND(N,n)
+# define _PB_NI POLYBENCH_LOOP_BOUND(NI,ni)
+# define _PB_NJ POLYBENCH_LOOP_BOUND(NJ,nj)
+# define _PB_NK POLYBENCH_LOOP_BOUND(NK,nk)
+# define _PB_NL POLYBENCH_LOOP_BOUND(NL,nl)
 
 # ifndef DATA_TYPE
 #  define DATA_TYPE float

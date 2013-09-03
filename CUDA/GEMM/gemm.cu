@@ -32,67 +32,72 @@
 #define ALPHA 32412.0f
 #define BETA 2123.0f
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void gemm(DATA_TYPE POLYBENCH_2D(A,NI,NK,ni,nk), DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj), DATA_TYPE POLYBENCH_2D(C,NI,NJ,ni,nj))
+void gemm(int ni, int nj, int nk, DATA_TYPE alpha, DATA_TYPE beta, DATA_TYPE POLYBENCH_2D(A,NI,NK,ni,nk), 
+	 DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj), DATA_TYPE POLYBENCH_2D(C,NI,NJ,ni,nj))
 {
 	int i,j,k;
 	
-	for (i = 0; i < NI; i++)
+	for (i = 0; i < _PB_NI; i++)
 	{
-    		for (j = 0; j < NJ; j++)
+    		for (j = 0; j < _PB_NJ; j++)
     		{
-			C[i][j] *= BETA;
+			C[i][j] *= beta;
 	
-			for (k = 0; k < NK; ++k)
+			for (k = 0; k < _PB_NK; ++k)
 			{
-	  			C[i][j] += ALPHA * A[i][k] * B[k][j];
+	  			C[i][j] += alpha * A[i][k] * B[k][j];
 			}
       		}
 	}
 }
 
 
-void init(DATA_TYPE POLYBENCH_2D(A,NI,NK,ni,nk), DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj), DATA_TYPE POLYBENCH_2D(C,NI,NJ,ni,nj))
+void init(int ni, int nj, int nk, DATA_TYPE* alpha, DATA_TYPE* beta, DATA_TYPE POLYBENCH_2D(A,NI,NK,ni,nk), 
+	DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj), DATA_TYPE POLYBENCH_2D(C,NI,NJ,ni,nj))
 {
 	int i, j;
 
-  	for (i = 0; i < NI; i++)
+	*alpha = 32412;
+	*beta = 2123;
+
+  	for (i = 0; i < ni; i++)
 	{
-    		for (j = 0; j < NK; j++)
+    		for (j = 0; j < nk; j++)
 		{
       			A[i][j] = ((DATA_TYPE) i*j) / NI;
 		}
 	}
 
-  	for (i = 0; i < NK; i++)
+  	for (i = 0; i < nk; i++)
 	{
-    		for (j = 0; j < NJ; j++)
+    		for (j = 0; j < nj; j++)
 		{
-      			B[i][j] = ((DATA_TYPE) i*j + 1) / NJ;
+      			B[i][j] = ((DATA_TYPE) i*j) / NI;
 		}
 	}
 
-  	for (i = 0; i < NI; i++)
+  	for (i = 0; i < ni; i++)
 	{
-    		for (j = 0; j < NJ; j++)
+    		for (j = 0; j < nj; j++)
 		{
-      			C[i][j] = ((DATA_TYPE) i*j + 2) / NJ;
+      			C[i][j] = ((DATA_TYPE) i*j) / NI;
 		}
 	}
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_2D(C,NI,NJ,ni,nj), DATA_TYPE POLYBENCH_2D(C_outputFromGpu,NI,NJ,ni,nj))
+void compareResults(int ni, int nj, DATA_TYPE POLYBENCH_2D(C,NI,NJ,ni,nj), DATA_TYPE POLYBENCH_2D(C_outputFromGpu,NI,NJ,ni,nj))
 {
 	int i, j, fail;
 	fail = 0;
 	
 	// Compare CPU and GPU outputs
-	for (i=0; i < NI; i++) 
+	for (i=0; i < ni; i++) 
 	{
-		for (j=0; j < NJ; j++) 
+		for (j=0; j < nj; j++) 
 		{
 			if (percentDiff(C[i][j], C_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
@@ -115,25 +120,25 @@ void GPU_argv_init()
 }
 
 
-__global__ void gemm_kernel(DATA_TYPE *a, DATA_TYPE *b, DATA_TYPE *c)
+__global__ void gemm_kernel(int ni, int nj, int nk, DATA_TYPE alpha, DATA_TYPE beta, DATA_TYPE *a, DATA_TYPE *b, DATA_TYPE *c)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 
-	if ((i < NI) && (j < NJ))
+	if ((i < _PB_NI) && (j < _PB_NJ))
 	{	
-		c[i * NJ + j] *= BETA;
+		c[i * NJ + j] *= beta;
 		int k;
-		for(k=0; k < NK; k++)
+		for(k=0; k < _PB_NK; k++)
 		{
-			c[i * NJ + j] += ALPHA * a[i * NK + k] * b[k * NJ +j];
+			c[i * NJ + j] += alpha * a[i * NK + k] * b[k * NJ +j];
 		}
 	}
 }
 
 
-void gemmCuda(DATA_TYPE POLYBENCH_2D(A,NI,NK,ni,nk), DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj), DATA_TYPE POLYBENCH_2D(C,NI,NJ,ni,nj),
-	DATA_TYPE POLYBENCH_2D(C_outputFromGpu,NI,NJ,ni,nj))
+void gemmCuda(int ni, int nj, int nk, DATA_TYPE alpha, DATA_TYPE beta, DATA_TYPE POLYBENCH_2D(A,NI,NK,ni,nk), 
+	DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj), DATA_TYPE POLYBENCH_2D(C,NI,NJ,ni,nj), DATA_TYPE POLYBENCH_2D(C_outputFromGpu,NI,NJ,ni,nj))
 {
 	DATA_TYPE *A_gpu;
 	DATA_TYPE *B_gpu;
@@ -153,7 +158,7 @@ void gemmCuda(DATA_TYPE POLYBENCH_2D(A,NI,NK,ni,nk), DATA_TYPE POLYBENCH_2D(B,NK
 	/* Start timer. */
   	polybench_start_instruments;
 
-	gemm_kernel<<< grid, block >>>(A_gpu, B_gpu, C_gpu);
+	gemm_kernel<<< grid, block >>>(ni, nj, nk, alpha, beta, A_gpu, B_gpu, C_gpu);
 	cudaThreadSynchronize();
 
 	/* Stop and print timer. */
@@ -188,16 +193,24 @@ void print_array(int ni, int nj,
 
 int main(int argc, char *argv[])
 {
+	/* Retrieve problem size. */
+	int ni = NI;
+	int nj = NJ;
+	int nk = NK;
+
+	/* Variable declaration/allocation. */
+	DATA_TYPE alpha;
+	DATA_TYPE beta;
 	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NI,NK,ni,nk);
 	POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,NK,NJ,nk,nj);
 	POLYBENCH_2D_ARRAY_DECL(C,DATA_TYPE,NI,NJ,ni,nj);
 	POLYBENCH_2D_ARRAY_DECL(C_outputFromGpu,DATA_TYPE,NI,NJ,ni,nj);
 
-	init(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C));
+	init(ni, nj, nk, &alpha, &beta, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C));
 	
 	GPU_argv_init();
 	
-	gemmCuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(C_outputFromGpu));
+	gemmCuda(ni, nj, nk, alpha, beta, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(C_outputFromGpu));
 
 
 	#ifdef RUN_ON_CPU
@@ -205,18 +218,18 @@ int main(int argc, char *argv[])
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		gemm(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C));
+		gemm(ni, nj, nk, alpha, beta, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C));
 		
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
   		polybench_stop_instruments;
 	 	polybench_print_instruments;
 	
-		compareResults(POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(C_outputFromGpu));
+		compareResults(ni, nj, POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(C_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(NI, NJ, POLYBENCH_ARRAY(C_outputFromGpu));
+		print_array(ni, nj, POLYBENCH_ARRAY(C_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

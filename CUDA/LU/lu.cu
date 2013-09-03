@@ -27,21 +27,21 @@
 
 #define GPU_DEVICE 0
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void lu(DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
+void lu(int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
-	for (int k = 0; k < N; k++)
+	for (int k = 0; k < _PB_N; k++)
     {
-		for (int j = k + 1; j < N; j++)
+		for (int j = k + 1; j < _PB_N; j++)
 		{
 			A[k][j] = A[k][j] / A[k][k];
 		}
 
-		for (int i = k + 1; i < N; i++)
+		for (int i = k + 1; i < _PB_N; i++)
 		{
-			for (int j = k + 1; j < N; j++)
+			for (int j = k + 1; j < _PB_N; j++)
 			{
 				A[i][j] = A[i][j] - A[i][k] * A[k][j];
 			}
@@ -50,13 +50,13 @@ void lu(DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 }
 
 
-void init_array(DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
+void init_array(int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
 	int i, j;
 
-	for (i = 0; i < N; i++)
+	for (i = 0; i < n; i++)
 	{
-		for (j = 0; j < N; j++)
+		for (j = 0; j < n; j++)
 		{
 			A[i][j] = ((DATA_TYPE) i*j + 1) / N;
 		}
@@ -64,15 +64,15 @@ void init_array(DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_2D(A_cpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_outputFromGpu,N,N,n,n))
+void compareResults(int n, DATA_TYPE POLYBENCH_2D(A_cpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_outputFromGpu,N,N,n,n))
 {
 	int i, j, fail;
 	fail = 0;
 	
 	// Compare a and b
-	for (i=0; i<N; i++) 
+	for (i=0; i<n; i++) 
 	{
-		for (j=0; j<N; j++) 
+		for (j=0; j<n; j++) 
 		{
 			if (percentDiff(A_cpu[i][j], A_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
@@ -95,30 +95,30 @@ void GPU_argv_init()
 }
 
 
-__global__ void lu_kernel1(DATA_TYPE *A, int k)
+__global__ void lu_kernel1(int n, DATA_TYPE *A, int k)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	if ((j > k) && (j < N))
+	if ((j > k) && (j < _PB_N))
 	{
 		A[k*N + j] = A[k*N + j] / A[k*N + k];
 	}
 }
 
 
-__global__ void lu_kernel2(DATA_TYPE *A, int k)
+__global__ void lu_kernel2(int n, DATA_TYPE *A, int k)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 	
-	if ((i > k) && (j > k) && (i < N) && (j < N))
+	if ((i > k) && (j > k) && (i < _PB_N) && (j < _PB_N))
 	{
 		A[i*N + j] = A[i*N + j] - A[i*N + k] * A[k*N + j];
 	}
 }
 
 
-void luCuda(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_outputFromGpu,N,N,n,n))
+void luCuda(int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_outputFromGpu,N,N,n,n))
 {
 	DATA_TYPE* AGpu;
 
@@ -136,12 +136,12 @@ void luCuda(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_outputFr
 	for (int k = 0; k < N; k++)
 	{
 		grid1.x = (unsigned int)(ceil((float)(N - (k + 1)) / ((float)block1.x)));
-		lu_kernel1<<<grid1, block1>>>(AGpu, k);
+		lu_kernel1<<<grid1, block1>>>(n, AGpu, k);
 		cudaThreadSynchronize();
 
 		grid2.x = (unsigned int)(ceil((float)(N - (k + 1)) / ((float)block2.x)));
 		grid2.y = (unsigned int)(ceil((float)(N - (k + 1)) / ((float)block2.y)));
-		lu_kernel2<<<grid2, block2>>>(AGpu, k);
+		lu_kernel2<<<grid2, block2>>>(n, AGpu, k);
 		cudaThreadSynchronize();
 	}
 	
@@ -175,13 +175,15 @@ void print_array(int n,
 
 int main(int argc, char *argv[])
 {
+	int n = N;
+
 	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,N,N,n,n);
   	POLYBENCH_2D_ARRAY_DECL(A_outputFromGpu,DATA_TYPE,N,N,n,n);
 
-	init_array(POLYBENCH_ARRAY(A));
+	init_array(n, POLYBENCH_ARRAY(A));
 
 	GPU_argv_init();
-	luCuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(A_outputFromGpu));
+	luCuda(n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(A_outputFromGpu));
 	
 
 	#ifdef RUN_ON_CPU
@@ -189,18 +191,18 @@ int main(int argc, char *argv[])
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		lu(POLYBENCH_ARRAY(A));
+		lu(n, POLYBENCH_ARRAY(A));
 
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 	
-		compareResults(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(A_outputFromGpu));
+		compareResults(n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(A_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(N, POLYBENCH_ARRAY(A_outputFromGpu));
+		print_array(n, POLYBENCH_ARRAY(A_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

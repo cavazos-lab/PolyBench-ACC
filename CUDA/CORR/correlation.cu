@@ -34,13 +34,13 @@
 #define RUN_ON_CPU
 
 
-void init_arrays(DATA_TYPE POLYBENCH_2D(data, M, N, m, n))
+void init_arrays(int m, int n, DATA_TYPE POLYBENCH_2D(data, M, N, m, n))
 {
 	int i, j;
 	
-	for (i=0; i < M; i++) 
+	for (i=0; i < m; i++) 
 	{
-    		for (j=0; j< N; j++) 
+    		for (j=0; j < n; j++) 
 		{
        		data[i][j] = ((DATA_TYPE) i*j)/ M;	
        	}
@@ -48,17 +48,17 @@ void init_arrays(DATA_TYPE POLYBENCH_2D(data, M, N, m, n))
 }
 
 
-void correlation(DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DATA_TYPE POLYBENCH_1D(mean, M, m), DATA_TYPE POLYBENCH_1D(stddev, M, m),
+void correlation(int m, int n, DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DATA_TYPE POLYBENCH_1D(mean, M, m), DATA_TYPE POLYBENCH_1D(stddev, M, m),
 		DATA_TYPE POLYBENCH_2D(symmat, M, N, m, n))
 {
 	int i, j, j1, j2;	
 	
 	// Determine mean of column vectors of input data matrix 
-  	for (j = 0; j < M; j++)
+  	for (j = 0; j < _PB_M; j++)
    	{
   		mean[j] = 0.0;
 
-   		for (i = 0; i < N; i++)
+   		for (i = 0; i < _PB_N; i++)
 		{
 			mean[j] += data[i][j];
    		}
@@ -67,11 +67,11 @@ void correlation(DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DATA_TYPE POLYBENCH_1
    	}
 
 	// Determine standard deviations of column vectors of data matrix. 
-  	for (j = 0; j < M; j++)
+  	for (j = 0; j < _PB_M; j++)
    	{
    		stddev[j] = 0.0;
       
-		for (i = 0; i < N; i++)
+		for (i = 0; i < _PB_N; i++)
 		{
 			stddev[j] += (data[i][j] - mean[j]) * (data[i][j] - mean[j]);
 		}
@@ -82,9 +82,9 @@ void correlation(DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DATA_TYPE POLYBENCH_1
 	}
 
  	// Center and reduce the column vectors. 
-  	for (i = 0; i < N; i++)
+  	for (i = 0; i < _PB_N; i++)
 	{
-		for (j = 0; j < M; j++)
+		for (j = 0; j < _PB_M; j++)
 		{
 			data[i][j] -= mean[j];
 			data[i][j] /= (sqrt(FLOAT_N)*stddev[j]) ;
@@ -92,15 +92,15 @@ void correlation(DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DATA_TYPE POLYBENCH_1
 	}
 
 	// Calculate the m * m correlation matrix. 
-  	for (j1 = 0; j1 < M-1; j1++)
+  	for (j1 = 0; j1 < _PB_M-1; j1++)
 	{	
 		symmat[j1][j1] = 1.0;
     
-		for (j2 = j1+1; j2 < M; j2++)
+		for (j2 = j1+1; j2 < _PB_M; j2++)
 		{
 	  		symmat[j1][j2] = 0.0;
 
-	  		for (i = 1; i < (N+1); i++)
+	  		for (i = 0; i < _PB_N; i++)
 			{
 	   			symmat[j1][j2] += (data[i][j1] * data[i][j2]);
 			}
@@ -113,14 +113,14 @@ void correlation(DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DATA_TYPE POLYBENCH_1
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_2D(symmat, M, N, m, n), DATA_TYPE POLYBENCH_2D(symmat_outputFromGpu, M, N, m, n))
+void compareResults(int m, int n, DATA_TYPE POLYBENCH_2D(symmat, M, N, m, n), DATA_TYPE POLYBENCH_2D(symmat_outputFromGpu, M, N, m, n))
 {
 	int i,j,fail;
 	fail = 0;
 
-	for (i=0; i < M; i++)
+	for (i=0; i < m; i++)
 	{
-		for (j=0; j < N; j++)
+		for (j=0; j < n; j++)
 		{
 			if (percentDiff(symmat[i][j], symmat_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD)
 			{
@@ -143,16 +143,16 @@ void GPU_argv_init()
 }
 
 	
-__global__ void mean_kernel(DATA_TYPE *mean, DATA_TYPE *data)
+__global__ void mean_kernel(int m, int n, DATA_TYPE *mean, DATA_TYPE *data)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (j < M)
+	if (j < _PB_M)
 	{
 		mean[j] = 0.0;
 
 		int i;
-		for(i=0; i < N; i++)
+		for(i=0; i < _PB_N; i++)
 		{
 			mean[j] += data[i*M + j];
 		}
@@ -162,16 +162,16 @@ __global__ void mean_kernel(DATA_TYPE *mean, DATA_TYPE *data)
 }
 
 
-__global__ void std_kernel(DATA_TYPE *mean, DATA_TYPE *std, DATA_TYPE *data)
+__global__ void std_kernel(int m, int n, DATA_TYPE *mean, DATA_TYPE *std, DATA_TYPE *data)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	if (j < M)
+	if (j < _PB_M)
 	{
 		std[j] = 0.0;
 
 		int i;
-		for(i = 0; i < N; i++)
+		for(i = 0; i < _PB_N; i++)
 		{
 			std[j] += (data[i*M + j] - mean[j]) * (data[i*M + j] - mean[j]);
 		}
@@ -185,12 +185,12 @@ __global__ void std_kernel(DATA_TYPE *mean, DATA_TYPE *std, DATA_TYPE *data)
 }
 
 
-__global__ void reduce_kernel(DATA_TYPE *mean, DATA_TYPE *std, DATA_TYPE *data)
+__global__ void reduce_kernel(int m, int n, DATA_TYPE *mean, DATA_TYPE *std, DATA_TYPE *data)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 	
-	if ((i < N) && (j < M))
+	if ((i < _PB_N) && (j < _PB_M))
 	{
 		data[i*M + j] -= mean[j];
 		data[i*M + j] /= (sqrt(FLOAT_N) * std[j]);
@@ -198,20 +198,20 @@ __global__ void reduce_kernel(DATA_TYPE *mean, DATA_TYPE *std, DATA_TYPE *data)
 }
 
 
-__global__ void corr_kernel(DATA_TYPE *symmat, DATA_TYPE *data)
+__global__ void corr_kernel(int m, int n, DATA_TYPE *symmat, DATA_TYPE *data)
 {
 	int j1 = blockIdx.x * blockDim.x + threadIdx.x;
 
 	int i, j2;
-	if (j1 < (M-1))
+	if (j1 < (_PB_M-1))
 	{
 		symmat[j1*M + j1] = 1.0;
 
-		for (j2 = (j1 + 1); j2 < M; j2++)
+		for (j2 = (j1 + 1); j2 < _PB_M; j2++)
 		{
 			symmat[j1*M + j2] = 0.0;
 
-			for(i = 0; i < N; i++)
+			for(i = 0; i < _PB_N; i++)
 			{
 				symmat[j1*M + j2] += data[i*M + j1] * data[i*M + j2];
 			}
@@ -221,8 +221,9 @@ __global__ void corr_kernel(DATA_TYPE *symmat, DATA_TYPE *data)
 }
 
 
-void correlationCuda(DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DATA_TYPE POLYBENCH_1D(mean, M, m), DATA_TYPE POLYBENCH_1D(stddev, M, m),
-		DATA_TYPE POLYBENCH_2D(symmat, M, N, m, n), DATA_TYPE POLYBENCH_2D(symmat_outputFromGpu, M, N, m, n))
+void correlationCuda(int m, int n, DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DATA_TYPE POLYBENCH_1D(mean, M, m), 
+			DATA_TYPE POLYBENCH_1D(stddev, M, m), DATA_TYPE POLYBENCH_2D(symmat, M, N, m, n), 
+			DATA_TYPE POLYBENCH_2D(symmat_outputFromGpu, M, N, m, n))
 {
 	DATA_TYPE *data_gpu;
 	DATA_TYPE *stddev_gpu;
@@ -253,13 +254,13 @@ void correlationCuda(DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DATA_TYPE POLYBEN
 	/* Start timer. */
   	polybench_start_instruments;
 
-	mean_kernel<<< grid1, block1 >>>(mean_gpu,data_gpu);
+	mean_kernel<<< grid1, block1 >>>(m, n, mean_gpu,data_gpu);
 	cudaThreadSynchronize();
-	std_kernel<<< grid2, block2 >>>(mean_gpu,stddev_gpu,data_gpu);
+	std_kernel<<< grid2, block2 >>>(m, n, mean_gpu,stddev_gpu,data_gpu);
 	cudaThreadSynchronize();
-	reduce_kernel<<< grid3, block3 >>>(mean_gpu,stddev_gpu,data_gpu);
+	reduce_kernel<<< grid3, block3 >>>(m, n, mean_gpu,stddev_gpu,data_gpu);
 	cudaThreadSynchronize();
-	corr_kernel<<< grid4, block4 >>>(symmat_gpu,data_gpu);
+	corr_kernel<<< grid4, block4 >>>(m, n, symmat_gpu,data_gpu);
 	cudaThreadSynchronize();
 
 	/* Stop and print timer. */
@@ -299,17 +300,20 @@ void print_array(int m,
 
 int main()
 {
+	int m = M;
+	int n = N;
+
 	POLYBENCH_2D_ARRAY_DECL(data,DATA_TYPE,M,N,m,n);
   	POLYBENCH_1D_ARRAY_DECL(mean,DATA_TYPE,M,m);
   	POLYBENCH_1D_ARRAY_DECL(stddev,DATA_TYPE,M,m);
 	POLYBENCH_2D_ARRAY_DECL(symmat,DATA_TYPE,M,N,m,n);
   	POLYBENCH_2D_ARRAY_DECL(symmat_outputFromGpu,DATA_TYPE,M,N,m,n);
   	
-	init_arrays(POLYBENCH_ARRAY(data));
+	init_arrays(m, n, POLYBENCH_ARRAY(data));
     
 	GPU_argv_init();
 
-	correlationCuda(POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(mean), POLYBENCH_ARRAY(stddev), POLYBENCH_ARRAY(symmat), 
+	correlationCuda(m, n, POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(mean), POLYBENCH_ARRAY(stddev), POLYBENCH_ARRAY(symmat), 
 		POLYBENCH_ARRAY(symmat_outputFromGpu));
 
 	#ifdef RUN_ON_CPU
@@ -317,18 +321,18 @@ int main()
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		correlation(POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(mean), POLYBENCH_ARRAY(stddev), POLYBENCH_ARRAY(symmat));
+		correlation(m, n, POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(mean), POLYBENCH_ARRAY(stddev), POLYBENCH_ARRAY(symmat));
 
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
     
-		compareResults(POLYBENCH_ARRAY(symmat), POLYBENCH_ARRAY(symmat_outputFromGpu));
+		compareResults(m, n, POLYBENCH_ARRAY(symmat), POLYBENCH_ARRAY(symmat_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(M, POLYBENCH_ARRAY(symmat_outputFromGpu));
+		print_array(m, POLYBENCH_ARRAY(symmat_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

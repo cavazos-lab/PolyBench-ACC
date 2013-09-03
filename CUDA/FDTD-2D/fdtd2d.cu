@@ -30,18 +30,19 @@
 #define RUN_ON_CPU
 
 
-void init_arrays(DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMAX), DATA_TYPE POLYBENCH_2D(ex,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(ey,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(hz,NX,NY,nx,ny))
+void init_arrays(int tmax, int nx, int ny, DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMAX), DATA_TYPE POLYBENCH_2D(ex,NX,NY,nx,ny), 
+		DATA_TYPE POLYBENCH_2D(ey,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(hz,NX,NY,nx,ny))
 {
 	int i, j;
 
-  	for (i = 0; i < TMAX; i++)
+  	for (i = 0; i < tmax; i++)
 	{
 		_fict_[i] = (DATA_TYPE) i;
 	}
 	
-	for (i = 0; i < NX; i++)
+	for (i = 0; i < nx; i++)
 	{
-		for (j = 0; j < NY; j++)
+		for (j = 0; j < ny; j++)
 		{
 			ex[i][j] = ((DATA_TYPE) i*(j+1) + 1) / NX;
 			ey[i][j] = ((DATA_TYPE) (i-1)*(j+2) + 2) / NX;
@@ -51,36 +52,37 @@ void init_arrays(DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMAX), DATA_TYPE POLYBENCH
 }
 
 
-void runFdtd(DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMAX), DATA_TYPE POLYBENCH_2D(ex,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(ey,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(hz,NX,NY,nx,ny))
+void runFdtd(int tmax, int nx, int ny, DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMAX), DATA_TYPE POLYBENCH_2D(ex,NX,NY,nx,ny), 
+	DATA_TYPE POLYBENCH_2D(ey,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(hz,NX,NY,nx,ny))
 {
 	int t, i, j;
 	
-	for (t=0; t < TMAX; t++)  
+	for (t=0; t < _PB_TMAX; t++)  
 	{
-		for (j=0; j < NY; j++)
+		for (j=0; j < _PB_NY; j++)
 		{
 			ey[0][j] = _fict_[t];
 		}
 	
-		for (i = 1; i < NX; i++)
+		for (i = 1; i < _PB_NX; i++)
 		{
-       		for (j = 0; j < NY; j++)
+       		for (j = 0; j < _PB_NY; j++)
 			{
        			ey[i][j] = ey[i][j] - 0.5*(hz[i][j] - hz[(i-1)][j]);
         		}
 		}
 
-		for (i = 0; i < NX; i++)
+		for (i = 0; i < _PB_NX; i++)
 		{
-       		for (j = 1; j < NY; j++)
+       		for (j = 1; j < _PB_NY; j++)
 			{
 				ex[i][j] = ex[i][j] - 0.5*(hz[i][j] - hz[i][(j-1)]);
 			}
 		}
 
-		for (i = 0; i < NX-1; i++)
+		for (i = 0; i < _PB_NX-1; i++)
 		{
-			for (j = 0; j < NY-1; j++)
+			for (j = 0; j < _PB_NY-1; j++)
 			{
 				hz[i][j] = hz[i][j] - 0.7*(ex[i][(j+1)] - ex[i][j] + ey[(i+1)][j] - ey[i][j]);
 			}
@@ -89,14 +91,14 @@ void runFdtd(DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMAX), DATA_TYPE POLYBENCH_2D(
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_2D(hz1,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(hz2,NX,NY,nx,ny))
+void compareResults(int nx, int ny, DATA_TYPE POLYBENCH_2D(hz1,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(hz2,NX,NY,nx,ny))
 {
 	int i, j, fail;
 	fail = 0;
 	
-	for (i=0; i < NX; i++) 
+	for (i=0; i < nx; i++) 
 	{
-		for (j=0; j < NY; j++) 
+		for (j=0; j < ny; j++) 
 		{
 			if (percentDiff(hz1[i][j], hz2[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
@@ -120,12 +122,12 @@ void GPU_argv_init()
 
 
 
-__global__ void fdtd_step1_kernel(DATA_TYPE* _fict_, DATA_TYPE *ex, DATA_TYPE *ey, DATA_TYPE *hz, int t)
+__global__ void fdtd_step1_kernel(int nx, int ny, DATA_TYPE* _fict_, DATA_TYPE *ex, DATA_TYPE *ey, DATA_TYPE *hz, int t)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 
-	if ((i < NX) && (j < NY))
+	if ((i < _PB_NX) && (j < _PB_NY))
 	{
 		if (i == 0) 
 		{
@@ -140,32 +142,32 @@ __global__ void fdtd_step1_kernel(DATA_TYPE* _fict_, DATA_TYPE *ex, DATA_TYPE *e
 
 
 
-__global__ void fdtd_step2_kernel(DATA_TYPE *ex, DATA_TYPE *ey, DATA_TYPE *hz, int t)
+__global__ void fdtd_step2_kernel(int nx, int ny, DATA_TYPE *ex, DATA_TYPE *ey, DATA_TYPE *hz, int t)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 	
-	if ((i < NX) && (j < NY) && (j > 0))
+	if ((i < _PB_NX) && (j < _PB_NY) && (j > 0))
 	{
 		ex[i * NY + j] = ex[i * NY + j] - 0.5f*(hz[i * NY + j] - hz[i * NY + (j-1)]);
 	}
 }
 
 
-__global__ void fdtd_step3_kernel(DATA_TYPE *ex, DATA_TYPE *ey, DATA_TYPE *hz, int t)
+__global__ void fdtd_step3_kernel(int nx, int ny, DATA_TYPE *ex, DATA_TYPE *ey, DATA_TYPE *hz, int t)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 	
-	if ((i < (NX-1)) && (j < (NY-1)))
+	if ((i < (_PB_NX-1)) && (j < (_PB_NY-1)))
 	{	
 		hz[i * NY + j] = hz[i * NY + j] - 0.7f*(ex[i * NY + (j+1)] - ex[i * NY + j] + ey[(i + 1) * NY + j] - ey[i * NY + j]);
 	}
 }
 
 
-void fdtdCuda(DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMAX), DATA_TYPE POLYBENCH_2D(ex,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(ey,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(hz,NX,NY,nx,ny),
-	DATA_TYPE POLYBENCH_2D(hz_outputFromGpu,NX,NY,nx,ny))
+void fdtdCuda(int tmax, int nx, int ny, DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMAX), DATA_TYPE POLYBENCH_2D(ex,NX,NY,nx,ny), 
+	DATA_TYPE POLYBENCH_2D(ey,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(hz,NX,NY,nx,ny), DATA_TYPE POLYBENCH_2D(hz_outputFromGpu,NX,NY,nx,ny))
 {
 	DATA_TYPE *_fict_gpu;
 	DATA_TYPE *ex_gpu;
@@ -188,13 +190,13 @@ void fdtdCuda(DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMAX), DATA_TYPE POLYBENCH_2D
 	/* Start timer. */
   	polybench_start_instruments;
 
-	for(int t = 0; t < TMAX; t++)
+	for(int t = 0; t < _PB_TMAX; t++)
 	{
-		fdtd_step1_kernel<<<grid,block>>>(_fict_gpu, ex_gpu, ey_gpu, hz_gpu, t);
+		fdtd_step1_kernel<<<grid,block>>>(nx, ny, _fict_gpu, ex_gpu, ey_gpu, hz_gpu, t);
 		cudaThreadSynchronize();
-		fdtd_step2_kernel<<<grid,block>>>(ex_gpu, ey_gpu, hz_gpu, t);
+		fdtd_step2_kernel<<<grid,block>>>(nx, ny, ex_gpu, ey_gpu, hz_gpu, t);
 		cudaThreadSynchronize();
-		fdtd_step3_kernel<<<grid,block>>>(ex_gpu, ey_gpu, hz_gpu, t);
+		fdtd_step3_kernel<<<grid,block>>>(nx, ny, ex_gpu, ey_gpu, hz_gpu, t);
 		cudaThreadSynchronize();
 	}
 	
@@ -232,34 +234,38 @@ void print_array(int nx,
 
 int main()
 {
+	int tmax = TMAX;
+	int nx = NX;
+	int ny = NY;
+
 	POLYBENCH_1D_ARRAY_DECL(_fict_,DATA_TYPE,TMAX,TMAX);
 	POLYBENCH_2D_ARRAY_DECL(ex,DATA_TYPE,NX,NY,nx,ny);
 	POLYBENCH_2D_ARRAY_DECL(ey,DATA_TYPE,NX,NY,nx,ny);
 	POLYBENCH_2D_ARRAY_DECL(hz,DATA_TYPE,NX,NY,nx,ny);
 	POLYBENCH_2D_ARRAY_DECL(hz_outputFromGpu,DATA_TYPE,NX,NY,nx,ny);
 
-	init_arrays(POLYBENCH_ARRAY(_fict_), POLYBENCH_ARRAY(ex), POLYBENCH_ARRAY(ey), POLYBENCH_ARRAY(hz));
+	init_arrays(tmax, nx, ny, POLYBENCH_ARRAY(_fict_), POLYBENCH_ARRAY(ex), POLYBENCH_ARRAY(ey), POLYBENCH_ARRAY(hz));
 
 	GPU_argv_init();
-	fdtdCuda(POLYBENCH_ARRAY(_fict_), POLYBENCH_ARRAY(ex), POLYBENCH_ARRAY(ey), POLYBENCH_ARRAY(hz), POLYBENCH_ARRAY(hz_outputFromGpu));
+	fdtdCuda(tmax, nx, ny, POLYBENCH_ARRAY(_fict_), POLYBENCH_ARRAY(ex), POLYBENCH_ARRAY(ey), POLYBENCH_ARRAY(hz), POLYBENCH_ARRAY(hz_outputFromGpu));
 
 	#ifdef RUN_ON_CPU
 
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		runFdtd(POLYBENCH_ARRAY(_fict_), POLYBENCH_ARRAY(ex), POLYBENCH_ARRAY(ey), POLYBENCH_ARRAY(hz));
+		runFdtd(tmax, nx, ny, POLYBENCH_ARRAY(_fict_), POLYBENCH_ARRAY(ex), POLYBENCH_ARRAY(ey), POLYBENCH_ARRAY(hz));
 
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 		
-		compareResults(POLYBENCH_ARRAY(hz), POLYBENCH_ARRAY(hz_outputFromGpu));
+		compareResults(nx, ny, POLYBENCH_ARRAY(hz), POLYBENCH_ARRAY(hz_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(NX, NY, POLYBENCH_ARRAY(hz_outputFromGpu));
+		print_array(nx, ny, POLYBENCH_ARRAY(hz_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

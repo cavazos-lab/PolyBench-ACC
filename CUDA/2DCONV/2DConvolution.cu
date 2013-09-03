@@ -28,10 +28,10 @@
 
 #define GPU_DEVICE 0
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void conv2D(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj))
+void conv2D(int ni, int nj, DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj))
 {
 	int i, j;
 	DATA_TYPE c11, c12, c13, c21, c22, c23, c31, c32, c33;
@@ -41,9 +41,9 @@ void conv2D(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B,
 	c13 = +0.4;  c23 = +0.7;  c33 = +0.10;
 
 
-	for (i = 1; i < NI - 1; ++i) // 0
+	for (i = 1; i < _PB_NI - 1; ++i) // 0
 	{
-		for (j = 1; j < NJ - 1; ++j) // 1
+		for (j = 1; j < _PB_NJ - 1; ++j) // 1
 		{
 			B[i][j] = c11 * A[(i - 1)][(j - 1)]  +  c12 * A[(i + 0)][(j - 1)]  +  c13 * A[(i + 1)][(j - 1)]
 				+ c21 * A[(i - 1)][(j + 0)]  +  c22 * A[(i + 0)][(j + 0)]  +  c23 * A[(i + 1)][(j + 0)] 
@@ -54,13 +54,13 @@ void conv2D(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B,
 
 
 
-void init(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj))
+void init(int ni, int nj, DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj))
 {
 	int i, j;
 
-	for (i = 0; i < NI; ++i)
+	for (i = 0; i < ni; ++i)
     	{
-		for (j = 0; j < NJ; ++j)
+		for (j = 0; j < nj; ++j)
 		{
 			A[i][j] = (float)rand()/RAND_MAX;
         	}
@@ -68,15 +68,15 @@ void init(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj))
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B_outputFromGpu, NI, NJ, ni, nj))
+void compareResults(int ni, int nj, DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B_outputFromGpu, NI, NJ, ni, nj))
 {
 	int i, j, fail;
 	fail = 0;
 	
-	// Compare a and b
-	for (i=1; i < (NI-1); i++) 
+	// Compare outputs from CPU and GPU
+	for (i=1; i < (ni-1); i++) 
 	{
-		for (j=1; j < (NJ-1); j++) 
+		for (j=1; j < (nj-1); j++) 
 		{
 			if (percentDiff(B[i][j], B_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
@@ -87,7 +87,6 @@ void compareResults(DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBEN
 	
 	// Print results
 	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
-	
 }
 
 
@@ -100,7 +99,7 @@ void GPU_argv_init()
 }
 
 
-__global__ void Convolution2D_kernel(DATA_TYPE *A, DATA_TYPE *B)
+__global__ void convolution2D_kernel(int ni, int nj, DATA_TYPE *A, DATA_TYPE *B)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
@@ -111,7 +110,7 @@ __global__ void Convolution2D_kernel(DATA_TYPE *A, DATA_TYPE *B)
 	c12 = -0.3;  c22 = +0.6;  c32 = -0.9;
 	c13 = +0.4;  c23 = +0.7;  c33 = +0.10;
 
-	if ((i < NI-1) && (j < NJ-1) && (i > 0) && (j > 0))
+	if ((i < _PB_NI-1) && (j < _PB_NJ-1) && (i > 0) && (j > 0))
 	{
 		B[i * NJ + j] =  c11 * A[(i - 1) * NJ + (j - 1)]  + c21 * A[(i - 1) * NJ + (j + 0)] + c31 * A[(i - 1) * NJ + (j + 1)] 
 			+ c12 * A[(i + 0) * NJ + (j - 1)]  + c22 * A[(i + 0) * NJ + (j + 0)] +  c32 * A[(i + 0) * NJ + (j + 1)]
@@ -120,10 +119,9 @@ __global__ void Convolution2D_kernel(DATA_TYPE *A, DATA_TYPE *B)
 }
 
 
-void convolution2DCuda(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B_outputFromGpu, NI, NJ, ni, nj))
+void convolution2DCuda(int ni, int nj, DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), 
+			DATA_TYPE POLYBENCH_2D(B_outputFromGpu, NI, NJ, ni, nj))
 {
-	//double t_start, t_end;
-
 	DATA_TYPE *A_gpu;
 	DATA_TYPE *B_gpu;
 
@@ -133,13 +131,12 @@ void convolution2DCuda(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLY
 	
 	dim3 block(DIM_THREAD_BLOCK_X, DIM_THREAD_BLOCK_Y);
 	dim3 grid((size_t)ceil( ((float)NI) / ((float)block.x) ), (size_t)ceil( ((float)NJ) / ((float)block.y)) );
-	//t_start = rtclock();
+
   	polybench_start_instruments;
 
-	Convolution2D_kernel<<<grid,block>>>(A_gpu,B_gpu);
+	convolution2D_kernel <<< grid,block >>> (ni, nj, A_gpu,B_gpu);
 	cudaThreadSynchronize();
-	//t_end = rtclock();
-	//fprintf(stdout, "GPU Runtime: %0.6lfs\n", t_end - t_start);//);
+	
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");
 
@@ -172,34 +169,38 @@ void print_array(int ni, int nj,
 
 int main(int argc, char *argv[])
 {
+	/* Retrieve problem size */
+	int ni = NI;
+	int nj = NJ;
+
 	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NI,NJ,ni,nj);
   	POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,NI,NJ,ni,nj);
   	POLYBENCH_2D_ARRAY_DECL(B_outputFromGpu,DATA_TYPE,NI,NJ,ni,nj);
 
 	//initialize the arrays
-	init(POLYBENCH_ARRAY(A));
+	init(ni, nj, POLYBENCH_ARRAY(A));
 	
 	GPU_argv_init();
 
-	convolution2DCuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
+	convolution2DCuda(ni, nj, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
 
 	#ifdef RUN_ON_CPU
 	
 	 	/* Start timer. */
 	  	polybench_start_instruments;
 
-		conv2D(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
+		conv2D(ni, nj, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
 
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 	
-		compareResults(POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
+		compareResults(ni, nj, POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(NI, NJ, POLYBENCH_ARRAY(B_outputFromGpu));
+		print_array(ni, nj, POLYBENCH_ARRAY(B_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

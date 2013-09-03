@@ -28,10 +28,10 @@
 
 #define GPU_DEVICE 0
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void conv3D(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk))
+void conv3D(int ni, int nj, int nk, DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk))
 {
 	int i, j, k;
 	DATA_TYPE c11, c12, c13, c21, c22, c23, c31, c32, c33;
@@ -40,13 +40,12 @@ void conv3D(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBEN
 	c12 = -3;  c22 = +6;  c32 = -9;
 	c13 = +4;  c23 = +7;  c33 = +10;
 
-	for (i = 1; i < NI - 1; ++i) // 0
+	for (i = 1; i < _PB_NI - 1; ++i) // 0
 	{
-		for (j = 1; j < NJ - 1; ++j) // 1
+		for (j = 1; j < _PB_NJ - 1; ++j) // 1
 		{
-			for (k = 1; k < NK -1; ++k) // 2
+			for (k = 1; k < _PB_NK -1; ++k) // 2
 			{
-				//printf("i:%d\nj:%d\nk:%d\n", i, j, k);
 				B[i][j][k] = c11 * A[(i - 1)][(j - 1)][(k - 1)]  +  c13 * A[(i + 1)][(j - 1)][(k - 1)]
 					     +   c21 * A[(i - 1)][(j - 1)][(k - 1)]  +  c23 * A[(i + 1)][(j - 1)][(k - 1)]
 					     +   c31 * A[(i - 1)][(j - 1)][(k - 1)]  +  c33 * A[(i + 1)][(j - 1)][(k - 1)]
@@ -61,15 +60,15 @@ void conv3D(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBEN
 }
 
 
-void init(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk))
+void init(int ni, int nj, int nk, DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk))
 {
 	int i, j, k;
 
-	for (i = 0; i < NI; ++i)
+	for (i = 0; i < ni; ++i)
     	{
-		for (j = 0; j < NJ; ++j)
+		for (j = 0; j < nj; ++j)
 		{
-			for (k = 0; k < NK; ++k)
+			for (k = 0; k < nk; ++k)
 			{
 				A[i][j][k] = i % 12 + 2 * (j % 7) + 3 * (k % 13);
 			}
@@ -78,17 +77,17 @@ void init(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk))
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B_outputFromGpu, NI, NJ, NK, ni, nj, nk))
+void compareResults(int ni, int nj, int nk, DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B_outputFromGpu, NI, NJ, NK, ni, nj, nk))
 {
 	int i, j, k, fail;
 	fail = 0;
 	
-	// Compare result from cpu and gpu...
-	for (i = 1; i < NI - 1; ++i) // 0
+	// Compare result from cpu and gpu
+	for (i = 1; i < ni - 1; ++i) // 0
 	{
-		for (j = 1; j < NJ - 1; ++j) // 1
+		for (j = 1; j < nj - 1; ++j) // 1
 		{
-			for (k = 1; k < NK - 1; ++k) // 2
+			for (k = 1; k < nk - 1; ++k) // 2
 			{
 				if (percentDiff(B[i][j][k], B_outputFromGpu[i][j][k]) > PERCENT_DIFF_ERROR_THRESHOLD)
 				{
@@ -112,7 +111,7 @@ void GPU_argv_init()
 }
 
 
-__global__ void convolution3D_kernel(DATA_TYPE* A, DATA_TYPE* B, int i)
+__global__ void convolution3D_kernel(int ni, int nj, int nk, DATA_TYPE* A, DATA_TYPE* B, int i)
 {
 	int k = blockIdx.x * blockDim.x + threadIdx.x;
 	int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -124,7 +123,7 @@ __global__ void convolution3D_kernel(DATA_TYPE* A, DATA_TYPE* B, int i)
 	c13 = +4;  c23 = +7;  c33 = +10;
 
 
-	if ((i < (NI-1)) && (j < (NJ-1)) &&  (k < (NK-1)) && (i > 0) && (j > 0) && (k > 0))
+	if ((i < (_PB_NI-1)) && (j < (_PB_NJ-1)) &&  (k < (_PB_NK-1)) && (i > 0) && (j > 0) && (k > 0))
 	{
 		B[i*(NK * NJ) + j*NK + k] = c11 * A[(i - 1)*(NK * NJ) + (j - 1)*NK + (k - 1)]  +  c13 * A[(i + 1)*(NK * NJ) + (j - 1)*NK + (k - 1)]
 					     +   c21 * A[(i - 1)*(NK * NJ) + (j - 1)*NK + (k - 1)]  +  c23 * A[(i + 1)*(NK * NJ) + (j - 1)*NK + (k - 1)]
@@ -138,7 +137,7 @@ __global__ void convolution3D_kernel(DATA_TYPE* A, DATA_TYPE* B, int i)
 }
 
 
-void convolution3DCuda(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B_outputFromGpu, NI, NJ, NK, ni, nj, nk))
+void convolution3DCuda(int ni, int nj, int nk, DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B_outputFromGpu, NI, NJ, NK, ni, nj, nk))
 {
 	DATA_TYPE *A_gpu;
 	DATA_TYPE *B_gpu;
@@ -155,9 +154,9 @@ void convolution3DCuda(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_T
   	polybench_start_instruments;
 
 	int i;
-	for (i = 1; i < NI - 1; ++i) // 0
+	for (i = 1; i < _PB_NI - 1; ++i) // 0
 	{
-		convolution3D_kernel<<< grid, block >>>(A_gpu, B_gpu, i);
+		convolution3D_kernel<<< grid, block >>>(ni, nj, nk, A_gpu, B_gpu, i);
 	}
 
 	cudaThreadSynchronize();
@@ -193,32 +192,36 @@ void print_array(int ni, int nj, int nk,
 
 int main(int argc, char *argv[])
 {
+	int ni = NI;
+	int nj = NJ;
+	int nk = NK;
+
 	POLYBENCH_3D_ARRAY_DECL(A,DATA_TYPE,NI,NJ,NK,ni,nj,nk);
 	POLYBENCH_3D_ARRAY_DECL(B,DATA_TYPE,NI,NJ,NK,ni,nj,nk);
 	POLYBENCH_3D_ARRAY_DECL(B_outputFromGpu,DATA_TYPE,NI,NJ,NK,ni,nj,nk);
 
-	init(POLYBENCH_ARRAY(A));
+	init(ni, nj, nk, POLYBENCH_ARRAY(A));
 	
 	GPU_argv_init();
 
-	convolution3DCuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
+	convolution3DCuda(ni, nj, nk, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
 
 	#ifdef RUN_ON_CPU
 
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		conv3D(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
+		conv3D(ni, nj, nk, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
 
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 	
-		compareResults(POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
+		compareResults(ni, nj, nk, POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(NI, NJ, NK, POLYBENCH_ARRAY(B_outputFromGpu));
+		print_array(ni, nj, nk, POLYBENCH_ARRAY(B_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

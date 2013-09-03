@@ -27,20 +27,20 @@
 
 #define GPU_DEVICE 0
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void init_array(DATA_TYPE POLYBENCH_2D(A, N, N, n, n), DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(y1, N, n), DATA_TYPE POLYBENCH_1D(y2, N, n))
+void init_array(int n, DATA_TYPE POLYBENCH_2D(A, N, N, n, n), DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(y1, N, n), DATA_TYPE POLYBENCH_1D(y2, N, n))
 {
 	int i, j;
 
-	for (i = 0; i < N; i++)
+	for (i = 0; i < n; i++)
 	{
 		x1[i] = ((DATA_TYPE) i) / N;
 		x2[i] = ((DATA_TYPE) i + 1) / N;
 		y1[i] = ((DATA_TYPE) i + 3) / N;
 		y2[i] = ((DATA_TYPE) i + 4) / N;
-		for (j = 0; j < N; j++)
+		for (j = 0; j < n; j++)
 		{
 			A[i][j] = ((DATA_TYPE) i*j) / N;
 		}
@@ -49,34 +49,34 @@ void init_array(DATA_TYPE POLYBENCH_2D(A, N, N, n, n), DATA_TYPE POLYBENCH_1D(x1
 
 
 
-void runMvt(DATA_TYPE POLYBENCH_2D(a, N, N, n, n), DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(y1, N, n), DATA_TYPE POLYBENCH_1D(y2, N, n))
+void runMvt(int n, DATA_TYPE POLYBENCH_2D(a, N, N, n, n), DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(y1, N, n), DATA_TYPE POLYBENCH_1D(y2, N, n))
 {
 	int i, j;
 	
-	for (i=0; i<N; i++) 
+	for (i=0; i<_PB_N; i++) 
 	{
 		for (j=0; j<N; j++) 
 		{
-       			x1[i] = x1[i] + a[i][j] * y1[j];
+       		x1[i] = x1[i] + a[i][j] * y1[j];
         	}
     	}
 	
-	for (i=0; i<N; i++) 
+	for (i=0; i<_PB_N; i++) 
 	{
-		for (j=0; j<N; j++) 
+		for (j=0; j<_PB_N; j++) 
 		{
- 		       	x2[i] = x2[i] + a[j][i] * y2[j];
+ 		      	x2[i] = x2[i] + a[j][i] * y2[j];
       		}
     	}
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x1_outputFromGpu, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(x2_outputFromGpu, N, n))
+void compareResults(int n, DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x1_outputFromGpu, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(x2_outputFromGpu, N, n))
 {
 	int i, fail;
 	fail = 0;
 	
-	for (i=0; i<N; i++) 
+	for (i=0; i<n; i++) 
 	{
 		if (percentDiff(x1[i], x1_outputFromGpu[i]) > PERCENT_DIFF_ERROR_THRESHOLD)
 		{
@@ -103,14 +103,14 @@ void GPU_argv_init()
 }
 
 
-__global__ void mvt_kernel1(DATA_TYPE *a, DATA_TYPE *x1, DATA_TYPE *y_1)
+__global__ void mvt_kernel1(int n, DATA_TYPE *a, DATA_TYPE *x1, DATA_TYPE *y_1)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (i < N)
+	if (i < _PB_N)
 	{
 		int j;
-		for(j=0; j < N; j++)
+		for(j=0; j < _PB_N; j++)
 		{
 			x1[i] += a[i * N + j] * y_1[j];
 		}
@@ -118,21 +118,21 @@ __global__ void mvt_kernel1(DATA_TYPE *a, DATA_TYPE *x1, DATA_TYPE *y_1)
 }
 
 
-__global__ void mvt_kernel2(DATA_TYPE *a, DATA_TYPE *x2, DATA_TYPE *y_2)
+__global__ void mvt_kernel2(int n, DATA_TYPE *a, DATA_TYPE *x2, DATA_TYPE *y_2)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (i < N)
+	if (i < _PB_N)
 	{
 		int j;
-		for(j=0; j < N; j++)
+		for(j=0; j < _PB_N; j++)
 		{
 			x2[i] += a[j * N + i] * y_2[j];	
 		}
 	}
 }
 
-void mvtCuda(DATA_TYPE POLYBENCH_2D(a, N, N, n, n), DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(y_1, N, n), DATA_TYPE POLYBENCH_1D(y_2, N, n), 
+void mvtCuda(int n, DATA_TYPE POLYBENCH_2D(a, N, N, n, n), DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(y_1, N, n), DATA_TYPE POLYBENCH_1D(y_2, N, n), 
 			DATA_TYPE POLYBENCH_1D(x1_outputFromGpu, N, n), DATA_TYPE POLYBENCH_1D(x2_outputFromGpu, N, n))
 {
 	DATA_TYPE* a_gpu;
@@ -158,8 +158,8 @@ void mvtCuda(DATA_TYPE POLYBENCH_2D(a, N, N, n, n), DATA_TYPE POLYBENCH_1D(x1, N
 	/* Start timer. */
   	polybench_start_instruments;
 	
-	mvt_kernel1<<<grid,block>>>(a_gpu,x1_gpu,y_1_gpu);
-	mvt_kernel2<<<grid,block>>>(a_gpu,x2_gpu,y_2_gpu);
+	mvt_kernel1<<<grid,block>>>(n, a_gpu,x1_gpu,y_1_gpu);
+	mvt_kernel2<<<grid,block>>>(n, a_gpu,x2_gpu,y_2_gpu);
 	cudaThreadSynchronize();
 
 	/* Stop and print timer. */
@@ -198,6 +198,7 @@ void print_array(int n,
 
 int main()
 {
+	int n = N;
 
 	POLYBENCH_2D_ARRAY_DECL(a,DATA_TYPE,N,N,n,n);
 	POLYBENCH_1D_ARRAY_DECL(x1,DATA_TYPE,N,n);
@@ -207,11 +208,11 @@ int main()
 	POLYBENCH_1D_ARRAY_DECL(y_1,DATA_TYPE,N,n);
 	POLYBENCH_1D_ARRAY_DECL(y_2,DATA_TYPE,N,n);
 
-	init_array(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2));
+	init_array(n, POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2));
 	
 	GPU_argv_init();
 
-	mvtCuda(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2), POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2_outputFromGpu));
+	mvtCuda(n, POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2), POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2_outputFromGpu));
 
 	#ifdef RUN_ON_CPU
 	
@@ -219,18 +220,18 @@ int main()
 	  	polybench_start_instruments;
 
 		//run the algorithm on the CPU
-		runMvt(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2));
+		runMvt(n, POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2));
 
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 	
-		compareResults(POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(x2_outputFromGpu));
+		compareResults(n, POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(x2_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(N, POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2_outputFromGpu));
+		print_array(n, POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

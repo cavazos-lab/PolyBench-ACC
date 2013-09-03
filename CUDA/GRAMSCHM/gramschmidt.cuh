@@ -20,32 +20,33 @@
 # if !defined(N)
 /* Define the possible dataset sizes. */
 #  ifdef MINI_DATASET
-#define M 2048
-#define N 2048
+#define NI 2048
+#define NJ 2048
 #  endif
 
 #  ifdef SMALL_DATASET
-#define M 2048
-#define N 2048
+#define NI 2048
+#define NJ 2048
 #  endif
 
 #  ifdef STANDARD_DATASET /* Default if unspecified. */
-#define M 2048
-#define N 2048
+#define NI 2048
+#define NJ 2048
 #  endif
 
 #  ifdef LARGE_DATASET
-#define M 2048
-#define N 2048
+#define NI 2048
+#define NJ 2048
 #  endif
 
 #  ifdef EXTRALARGE_DATASET
-#define M 2048
-#define N 2048
+#define NI 2048
+#define NJ 2048
 #  endif
 # endif /* !N */
 
-# define _PB_N POLYBENCH_LOOP_BOUND(N,n)
+# define _PB_NI POLYBENCH_LOOP_BOUND(NI,ni)
+# define _PB_NJ POLYBENCH_LOOP_BOUND(NJ,nj)
 
 # ifndef DATA_TYPE
 #  define DATA_TYPE float

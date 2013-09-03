@@ -27,55 +27,56 @@
 //define the error threshold for the results "not matching"
 #define PERCENT_DIFF_ERROR_THRESHOLD 0.05
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void init_array(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(C, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(D, NI, NJ, ni, nj))
+void init_array(int ni, int nj, int nk, int nl, int nm, DATA_TYPE POLYBENCH_2D(A, NI, NK, ni, nk), DATA_TYPE POLYBENCH_2D(B, NK, NJ, nk, nj), 
+		DATA_TYPE POLYBENCH_2D(C, NJ, NM, nj, nm), DATA_TYPE POLYBENCH_2D(D, NM, NL, nm, nl))
 {
 	int i, j;
 
-	for (i = 0; i < NI; i++)
+	for (i = 0; i < ni; i++)
 	{
-		for (j = 0; j < NK; j++)
+		for (j = 0; j < nk; j++)
 		{
-			A[i][j] = ((DATA_TYPE) i*j) / NI;
+			A[i][j] = ((DATA_TYPE) i*j) / ni;
 		}
 	}
   
-	for (i = 0; i < NK; i++)
+	for (i = 0; i < nk; i++)
 	{
-		for (j = 0; j < NJ; j++)
+		for (j = 0; j < nj; j++)
 		{
-			B[i][j] = ((DATA_TYPE) i*(j+1)) / NJ;
+			B[i][j] = ((DATA_TYPE) i*(j+1)) / nj;
 		}
 	}
   
-	for (i = 0; i < NJ; i++)
+	for (i = 0; i < nj; i++)
 	{
-		for (j = 0; j < NM; j++)
+		for (j = 0; j < nm; j++)
 		{
-			C[i][j] = ((DATA_TYPE) i*(j+3)) / NL;
+			C[i][j] = ((DATA_TYPE) i*(j+3)) / nl;
 		}
 	}
   
-	for (i = 0; i < NM; i++)
+	for (i = 0; i < nm; i++)
 	{
-		for (j = 0; j < NL; j++)
+		for (j = 0; j < nl; j++)
 		{
-			D[i][j] = ((DATA_TYPE) i*(j+2)) / NK;
+			D[i][j] = ((DATA_TYPE) i*(j+2)) / nk;
 		}
 	}
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_2D(G, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(G_outputFromGpu, NI, NJ, ni, nj))
+void compareResults(int ni, int nl, DATA_TYPE POLYBENCH_2D(G, NI, NL, ni, nl), DATA_TYPE POLYBENCH_2D(G_outputFromGpu, NI, NL, ni, nl))
 {
 	int i,j,fail;
 	fail = 0;
 
-	for (i=0; i < NI; i++)
+	for (i=0; i < ni; i++)
 	{
-		for (j=0; j < NL; j++)
+		for (j=0; j < nl; j++)
 		{
 			if (percentDiff(G[i][j], G_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD)
 			{
@@ -98,15 +99,16 @@ void GPU_argv_init()
 }
 
 	
-__global__ void mm3_kernel1(DATA_TYPE *A, DATA_TYPE *B, DATA_TYPE *E)
+__global__ void mm3_kernel1(int ni, int nj, int nk, int nl, int nm, DATA_TYPE *A, DATA_TYPE *B, DATA_TYPE *E)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 
-	if ((i < NI) && (j < NJ))
+	if ((i < _PB_NI) && (j < _PB_NJ))
 	{
+		E[i * NJ + j] = 0;
 		int k;
-		for(k=0; k < NK; k++)
+		for(k=0; k < _PB_NK; k++)
 		{
 			E[i * NJ + j] += A[i * NK + k] * B[k * NJ + j];
 		}
@@ -114,15 +116,16 @@ __global__ void mm3_kernel1(DATA_TYPE *A, DATA_TYPE *B, DATA_TYPE *E)
 }
 
 	
-__global__ void mm3_kernel2(DATA_TYPE *C, DATA_TYPE *D, DATA_TYPE *F)
+__global__ void mm3_kernel2(int ni, int nj, int nk, int nl, int nm, DATA_TYPE *C, DATA_TYPE *D, DATA_TYPE *F)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 
-	if ((i < NJ) && (j < NL))
+	if ((i < _PB_NJ) && (j < _PB_NL))
 	{
+		F[i * NL + j] = 0;
 		int k;
-		for(k=0; k < NM; k++)
+		for(k=0; k < _PB_NM; k++)
 		{
 			F[i * NL + j] += C[i * NM + k] * D[k * NL +j];
 		}
@@ -130,15 +133,16 @@ __global__ void mm3_kernel2(DATA_TYPE *C, DATA_TYPE *D, DATA_TYPE *F)
 }
 
 	
-__global__ void mm3_kernel3(DATA_TYPE *E, DATA_TYPE *F, DATA_TYPE *G)
+__global__ void mm3_kernel3(int ni, int nj, int nk, int nl, int nm, DATA_TYPE *E, DATA_TYPE *F, DATA_TYPE *G)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 
-	if ((i < NI) && (j < NL))
+	if ((i < _PB_NI) && (j < _PB_NL))
 	{
+		G[i * NL + j] = 0;
 		int k;
-		for(k=0; k < NJ; k++)
+		for(k=0; k < _PB_NJ; k++)
 		{
 			G[i * NL + j] += E[i * NJ + k] * F[k * NL + j];
 		}
@@ -146,44 +150,51 @@ __global__ void mm3_kernel3(DATA_TYPE *E, DATA_TYPE *F, DATA_TYPE *G)
 }
 
 
-void mm3_cpu(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(C, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(D, NI, NJ, ni, nj), 
-	DATA_TYPE POLYBENCH_2D(E, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(F, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(G, NI, NJ, ni, nj))
+/* Main computational kernel on CPU */
+void mm3_cpu(int ni, int nj, int nk, int nl, int nm,
+		DATA_TYPE POLYBENCH_2D(E,NI,NJ,ni,nj),
+		DATA_TYPE POLYBENCH_2D(A,NI,NK,ni,nk),
+		DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj),
+		DATA_TYPE POLYBENCH_2D(F,NJ,NL,nj,nl),
+		DATA_TYPE POLYBENCH_2D(C,NJ,NM,nj,nm),
+		DATA_TYPE POLYBENCH_2D(D,NM,NL,nm,nl),
+		DATA_TYPE POLYBENCH_2D(G,NI,NL,ni,nl))
 {
-	int i,j,k;
-	
+	int i, j, k;
+
 	/* E := A*B */
-	for (i = 0; i < NI; i++)
+	for (i = 0; i < _PB_NI; i++)
 	{
-		for (j = 0; j < NJ; j++)
+		for (j = 0; j < _PB_NJ; j++)
 		{
 			E[i][j] = 0;
-			for (k = 0; k < NK; ++k)
+			for (k = 0; k < _PB_NK; ++k)
 			{
 				E[i][j] += A[i][k] * B[k][j];
 			}
 		}
 	}
-		
+
 	/* F := C*D */
-	for (i = 0; i < NJ; i++)
+	for (i = 0; i < _PB_NJ; i++)
 	{
-		for (j = 0; j < NL; j++)
+		for (j = 0; j < _PB_NL; j++)
 		{
 			F[i][j] = 0;
-			for (k = 0; k < NM; ++k)
+			for (k = 0; k < _PB_NM; ++k)
 			{
 				F[i][j] += C[i][k] * D[k][j];
 			}
 		}
 	}
 
-  	/* G := E*F */
-	for (i = 0; i < NI; i++)
+	/* G := E*F */
+	for (i = 0; i < _PB_NI; i++)
 	{
-		for (j = 0; j < NL; j++)
+		for (j = 0; j < _PB_NL; j++)
 		{
 			G[i][j] = 0;
-			for (k = 0; k < NJ; ++k)
+			for (k = 0; k < _PB_NJ; ++k)
 			{
 				G[i][j] += E[i][k] * F[k][j];
 			}
@@ -192,8 +203,15 @@ void mm3_cpu(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B
 }
 
 
-void mm3Cuda(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(C, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(D, NI, NJ, ni, nj), 
-	DATA_TYPE POLYBENCH_2D(E, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(F, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(G, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(G_outputFromGpu, NI, NJ, ni, nj))
+void mm3Cuda(int ni, int nj, int nk, int nl, int nm,
+		DATA_TYPE POLYBENCH_2D(E,NI,NJ,ni,nj),
+		DATA_TYPE POLYBENCH_2D(A,NI,NK,ni,nk),
+		DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj),
+		DATA_TYPE POLYBENCH_2D(F,NJ,NL,nj,nl),
+		DATA_TYPE POLYBENCH_2D(C,NJ,NM,nj,nm),
+		DATA_TYPE POLYBENCH_2D(D,NM,NL,nm,nl),
+		DATA_TYPE POLYBENCH_2D(G,NI,NL,ni,nl),
+		DATA_TYPE POLYBENCH_2D(G_outputFromGpu,NI,NL,ni,nl))
 {
 	DATA_TYPE *A_gpu;
 	DATA_TYPE *B_gpu;
@@ -227,11 +245,11 @@ void mm3Cuda(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B
 	/* Start timer. */
   	polybench_start_instruments;
 
-	mm3_kernel1<<<grid1,block>>>(A_gpu, B_gpu, E_gpu);
+	mm3_kernel1<<<grid1,block>>>(ni, nj, nk, nl, nm, A_gpu, B_gpu, E_gpu);
 	cudaThreadSynchronize();
-	mm3_kernel2<<<grid2,block>>>(C_gpu, D_gpu, F_gpu);
+	mm3_kernel2<<<grid2,block>>>(ni, nj, nk, nl, nm, C_gpu, D_gpu, F_gpu);
 	cudaThreadSynchronize();
-	mm3_kernel3<<<grid3,block>>>(E_gpu, F_gpu, G_gpu);
+	mm3_kernel3<<<grid3,block>>>(ni, nj, nk, nl, nm, E_gpu, F_gpu, G_gpu);
 	cudaThreadSynchronize();
 
 	/* Stop and print timer. */
@@ -269,38 +287,47 @@ void print_array(int ni, int nl,
 
 int main(int argc, char** argv)
 {
-	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NI,NJ,ni,nj);
-	POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,NI,NJ,ni,nj);
-	POLYBENCH_2D_ARRAY_DECL(C,DATA_TYPE,NI,NJ,ni,nj);
-	POLYBENCH_2D_ARRAY_DECL(D,DATA_TYPE,NI,NJ,ni,nj);
-	POLYBENCH_2D_ARRAY_DECL(E,DATA_TYPE,NI,NJ,ni,nj);
-	POLYBENCH_2D_ARRAY_DECL(F,DATA_TYPE,NI,NJ,ni,nj);
-	POLYBENCH_2D_ARRAY_DECL(G,DATA_TYPE,NI,NJ,ni,nj);
-	POLYBENCH_2D_ARRAY_DECL(G_outputFromGpu,DATA_TYPE,NI,NJ,ni,nj);
+	int ni = NI;
+	int nj = NJ;
+	int nk = NK;
+	int nl = NL;
+	int nm = NM;
 
-	init_array(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(D));
+	/* Variable declaration/allocation. */
+	POLYBENCH_2D_ARRAY_DECL(E, DATA_TYPE, NI, NJ, ni, nj);
+	POLYBENCH_2D_ARRAY_DECL(A, DATA_TYPE, NI, NK, ni, nk);
+	POLYBENCH_2D_ARRAY_DECL(B, DATA_TYPE, NK, NJ, nk, nj);
+	POLYBENCH_2D_ARRAY_DECL(F, DATA_TYPE, NJ, NL, nj, nl);
+	POLYBENCH_2D_ARRAY_DECL(C, DATA_TYPE, NJ, NM, nj, nm);
+	POLYBENCH_2D_ARRAY_DECL(D, DATA_TYPE, NM, NL, nm, nl);
+	POLYBENCH_2D_ARRAY_DECL(G, DATA_TYPE, NI, NL, ni, nl);
+	POLYBENCH_2D_ARRAY_DECL(G_outputFromGpu, DATA_TYPE, NI, NL, ni, nl);
+
+	init_array(ni, nj, nk, nl, nm, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(D));
 
 	GPU_argv_init();
 
-	mm3Cuda(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(D), POLYBENCH_ARRAY(E), POLYBENCH_ARRAY(F), POLYBENCH_ARRAY(G), POLYBENCH_ARRAY(G_outputFromGpu));
+	mm3Cuda(ni, nj, nk, nl, nm, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(D), POLYBENCH_ARRAY(E), 
+		POLYBENCH_ARRAY(F), POLYBENCH_ARRAY(G), POLYBENCH_ARRAY(G_outputFromGpu));
 
 	#ifdef RUN_ON_CPU
 
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		mm3_cpu(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(D), POLYBENCH_ARRAY(E), POLYBENCH_ARRAY(F), POLYBENCH_ARRAY(G));
+		mm3_cpu(ni, nj, nk, nl, nm, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(D), POLYBENCH_ARRAY(E), 
+			POLYBENCH_ARRAY(F), POLYBENCH_ARRAY(G));
 	
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 
-		compareResults(POLYBENCH_ARRAY(G), POLYBENCH_ARRAY(G_outputFromGpu));
+		compareResults(ni, nl, POLYBENCH_ARRAY(G), POLYBENCH_ARRAY(G_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(NI, NJ, POLYBENCH_ARRAY(G_outputFromGpu));
+		print_array(ni, nl, POLYBENCH_ARRAY(G_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 
