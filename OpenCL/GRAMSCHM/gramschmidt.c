@@ -64,7 +64,7 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
 void compareResults(int ni, int nj, DATA_TYPE POLYBENCH_2D(A,NI,NJ,ni,nj), DATA_TYPE POLYBENCH_2D(A_outputFromGpu,NI,NJ,ni,nj))
@@ -216,7 +216,7 @@ void cl_launch_kernel(int ni, int nj)
   	polybench_start_instruments;
 	
 	int k;
-	for (k = 0; k < _PB_N; k++)
+	for (k = 0; k < _PB_NJ; k++)
 	{
 		// Set the arguments of the kernel
 		errcode =  clSetKernelArg(clKernel1, 0, sizeof(cl_mem), (void *)&a_mem_obj);
@@ -248,7 +248,7 @@ void cl_launch_kernel(int ni, int nj)
 		if(errcode != CL_SUCCESS) printf("Error in launching kernel2\n");
 		clEnqueueBarrier(clCommandQue);
 
-		globalWorkSizeKernel3[0] = (size_t)ceil(((float)N - (float)(k+1)) / ((float)DIM_LOCAL_WORK_GROUP_X)) * DIM_LOCAL_WORK_GROUP_X;
+		globalWorkSizeKernel3[0] = (size_t)ceil(((float)NJ - (float)(k+1)) / ((float)DIM_LOCAL_WORK_GROUP_X)) * DIM_LOCAL_WORK_GROUP_X;
 		if (globalWorkSizeKernel3[0] > 1)
 		{
 			errcode =  clSetKernelArg(clKernel3, 0, sizeof(cl_mem), (void *)&a_mem_obj);

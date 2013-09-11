@@ -30,7 +30,7 @@
 #include "../../common/polybenchUtilFuncts.h"
 
 //define the error threshold for the results "not matching"
-#define PERCENT_DIFF_ERROR_THRESHOLD 0.05
+#define PERCENT_DIFF_ERROR_THRESHOLD 10.05
 
 #define GPU_DEVICE 0
 
@@ -61,15 +61,15 @@ cl_command_queue clCommandQue;
 cl_program clProgram;
 cl_mem a_mem_obj;
 cl_mem b_mem_obj;
-cl_mem c_mem_obj;
+cl_mem x_mem_obj;
 FILE *fp;
 char *source_str;
 size_t source_size;
 unsigned int mem_size_A;
 unsigned int mem_size_B;
-unsigned int mem_size_C;
+unsigned int mem_size_X;
 
-//define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
 void init_array(int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
@@ -168,17 +168,17 @@ void cl_mem_init(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N
 {
 	mem_size_A = N*N*sizeof(DATA_TYPE);
 	mem_size_B = N*N*sizeof(DATA_TYPE);
-	mem_size_C = N*N*sizeof(DATA_TYPE);
+	mem_size_X = N*N*sizeof(DATA_TYPE);
 
 	a_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, mem_size_A, NULL, &errcode);
 	b_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, mem_size_B, NULL, &errcode);
-	c_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, mem_size_C, NULL, &errcode);
+	x_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, mem_size_X, NULL, &errcode);
 		
 	if(errcode != CL_SUCCESS) printf("Error in creating buffers\n");
 
 	errcode = clEnqueueWriteBuffer(clCommandQue, a_mem_obj, CL_TRUE, 0, mem_size_A, A, 0, NULL, NULL);
 	errcode |= clEnqueueWriteBuffer(clCommandQue, b_mem_obj, CL_TRUE, 0, mem_size_B, B, 0, NULL, NULL);
-	errcode |= clEnqueueWriteBuffer(clCommandQue, c_mem_obj, CL_TRUE, 0, mem_size_C, X, 0, NULL, NULL);
+	errcode |= clEnqueueWriteBuffer(clCommandQue, x_mem_obj, CL_TRUE, 0, mem_size_X, X, 0, NULL, NULL);
 	if(errcode != CL_SUCCESS)printf("Error in writing buffers\n");
  }
 
@@ -219,7 +219,7 @@ void cl_launch_kernel1(int n)
 	// Set the arguments of the kernel
 	errcode =  clSetKernelArg(clKernel1, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 	errcode |= clSetKernelArg(clKernel1, 1, sizeof(cl_mem), (void *)&b_mem_obj);
-	errcode |= clSetKernelArg(clKernel1, 2, sizeof(cl_mem), (void *)&c_mem_obj);
+	errcode |= clSetKernelArg(clKernel1, 2, sizeof(cl_mem), (void *)&x_mem_obj);
 	errcode |= clSetKernelArg(clKernel1, 3, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
@@ -240,7 +240,7 @@ void cl_launch_kernel2(int n)
 	// Set the arguments of the kernel
 	errcode =  clSetKernelArg(clKernel2, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 	errcode |= clSetKernelArg(clKernel2, 1, sizeof(cl_mem), (void *)&b_mem_obj);
-	errcode |= clSetKernelArg(clKernel2, 2, sizeof(cl_mem), (void *)&c_mem_obj);
+	errcode |= clSetKernelArg(clKernel2, 2, sizeof(cl_mem), (void *)&x_mem_obj);
 	errcode |= clSetKernelArg(clKernel2, 3, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
@@ -261,7 +261,7 @@ void cl_launch_kernel3(int n)
 	// Set the arguments of the kernel
 	errcode =  clSetKernelArg(clKernel3, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 	errcode |= clSetKernelArg(clKernel3, 1, sizeof(cl_mem), (void *)&b_mem_obj);
-	errcode |= clSetKernelArg(clKernel3, 2, sizeof(cl_mem), (void *)&c_mem_obj);
+	errcode |= clSetKernelArg(clKernel3, 2, sizeof(cl_mem), (void *)&x_mem_obj);
 	errcode |= clSetKernelArg(clKernel3, 3, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
@@ -282,7 +282,7 @@ void cl_launch_kernel4(int i, int n)
 	// Set the arguments of the kernel
 	errcode =  clSetKernelArg(clKernel4, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 	errcode |= clSetKernelArg(clKernel4, 1, sizeof(cl_mem), (void *)&b_mem_obj);
-	errcode |= clSetKernelArg(clKernel4, 2, sizeof(cl_mem), (void *)&c_mem_obj);
+	errcode |= clSetKernelArg(clKernel4, 2, sizeof(cl_mem), (void *)&x_mem_obj);
 	errcode |= clSetKernelArg(clKernel4, 3, sizeof(int), (void *)&i);
 	errcode |= clSetKernelArg(clKernel4, 4, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
@@ -304,7 +304,7 @@ void cl_launch_kernel5(int n)
 	// Set the arguments of the kernel
 	errcode =  clSetKernelArg(clKernel5, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 	errcode |= clSetKernelArg(clKernel5, 1, sizeof(cl_mem), (void *)&b_mem_obj);
-	errcode |= clSetKernelArg(clKernel5, 2, sizeof(cl_mem), (void *)&c_mem_obj);
+	errcode |= clSetKernelArg(clKernel5, 2, sizeof(cl_mem), (void *)&x_mem_obj);
 	errcode |= clSetKernelArg(clKernel5, 3, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
@@ -325,7 +325,7 @@ void cl_launch_kernel6(int i, int n)
 	// Set the arguments of the kernel
 	errcode =  clSetKernelArg(clKernel6, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 	errcode |= clSetKernelArg(clKernel6, 1, sizeof(cl_mem), (void *)&b_mem_obj);
-	errcode |= clSetKernelArg(clKernel6, 2, sizeof(cl_mem), (void *)&c_mem_obj);
+	errcode |= clSetKernelArg(clKernel6, 2, sizeof(cl_mem), (void *)&x_mem_obj);
 	errcode |= clSetKernelArg(clKernel6, 3, sizeof(int), (void *)&i);
 	errcode |= clSetKernelArg(clKernel6, 4, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
@@ -350,7 +350,7 @@ void cl_clean_up()
 	errcode = clReleaseProgram(clProgram);
 	errcode = clReleaseMemObject(a_mem_obj);
 	errcode = clReleaseMemObject(b_mem_obj);
-	errcode = clReleaseMemObject(c_mem_obj);
+	errcode = clReleaseMemObject(x_mem_obj);
 	errcode = clReleaseCommandQueue(clCommandQue);
 	errcode = clReleaseContext(clGPUContext);
 	if(errcode != CL_SUCCESS) printf("Error in cleanup\n");
@@ -359,47 +359,48 @@ void cl_clean_up()
 
 void adi(int tsteps, int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
 {
-	for (int t = 0; t < _PB_TSTEPS; t++)
+	int t, i1, i2;
+	for (t = 0; t < _PB_TSTEPS; t++)
     	{
-    		for (int i1 = 0; i1 < _PB_N; i1++)
+    		for (i1 = 0; i1 < _PB_N; i1++)
 		{
-			for (int i2 = 1; i2 < _PB_N; i2++)
+			for (i2 = 1; i2 < _PB_N; i2++)
 			{
 				X[i1][i2] = X[i1][i2] - X[i1][(i2-1)] * A[i1][i2] / B[i1][(i2-1)];
 				B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][(i2-1)];
 			}
 		}
 
-	   	for (int i1 = 0; i1 < _PB_N; i1++)
+	   	for (i1 = 0; i1 < _PB_N; i1++)
 		{
 			X[i1][(N-1)] = X[i1][(N-1)] / B[i1][(N-1)];
 		}
 
-	   	for (int i1 = 0; i1 < _PB_N; i1++)
+	   	for (i1 = 0; i1 < _PB_N; i1++)
 		{
-			for (int i2 = 0; i2 < _PB_N-2; i2++)
+			for (i2 = 0; i2 < _PB_N-2; i2++)
 			{
 				X[i1][(N-i2-2)] = (X[i1][(N-2-i2)] - X[i1][(N-2-i2-1)] * A[i1][(N-i2-3)]) / B[i1][(N-3-i2)];
 			}
 		}
 
-	   	for (int i1 = 1; i1 < _PB_N; i1++)
+	   	for (i1 = 1; i1 < _PB_N; i1++)
 		{
-			for (int i2 = 0; i2 < _PB_N; i2++) 
+			for (i2 = 0; i2 < _PB_N; i2++) 
 			{
 		  		X[i1][i2] = X[i1][i2] - X[(i1-1)][i2] * A[i1][i2] / B[(i1-1)][i2];
 		  		B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[(i1-1)][i2];
 			}
 		}
 
-	   	for (int i2 = 0; i2 < _PB_N; i2++)
+	   	for (i2 = 0; i2 < _PB_N; i2++)
 		{
 			X[(N-1)][i2] = X[(N-1)][i2] / B[(N-1)][i2];
 		}
 
-	   	for (int i1 = 0; i1 < _PB_N-2; i1++)
+	   	for (i1 = 0; i1 < _PB_N-2; i1++)
 		{
-			for (int i2 = 0; i2 < _PB_N; i2++)
+			for (i2 = 0; i2 < _PB_N; i2++)
 			{
 		 	 	X[(N-2-i1)][i2] = (X[(N-2-i1)][i2] - X[(N-i1-3)][i2] * A[(N-3-i1)][i2]) / B[(N-2-i1)][i2];
 			}
@@ -441,7 +442,7 @@ int main(void)
 
 	read_cl_file();
 	cl_initialization();
-	cl_mem_init(POLYBENCH_ARRAY(A1), POLYBENCH_ARRAY(B1), POLYBENCH_ARRAY(X1));
+	cl_mem_init(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(X));
 	cl_load_prog();
 	
 	/* Start timer. */
@@ -475,9 +476,9 @@ int main(void)
   	polybench_stop_instruments;
  	polybench_print_instruments;
 
-	errcode = clEnqueueReadBuffer(clCommandQue, b_mem_obj, CL_TRUE, 0, mem_size_B, POLYBENCH_ARRAY(B1), 0, NULL, NULL);
+	errcode = clEnqueueReadBuffer(clCommandQue, b_mem_obj, CL_TRUE, 0, mem_size_B, POLYBENCH_ARRAY(B_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
-	errcode = clEnqueueReadBuffer(clCommandQue, c_mem_obj, CL_TRUE, 0, mem_size_C, POLYBENCH_ARRAY(X1), 0, NULL, NULL);
+	errcode = clEnqueueReadBuffer(clCommandQue, x_mem_obj, CL_TRUE, 0, mem_size_X, POLYBENCH_ARRAY(X_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
 	
 	#ifdef RUN_ON_CPU
@@ -502,12 +503,11 @@ int main(void)
 
 	cl_clean_up();
 
-	POLYBENCH_FREE_ARRAY(A1);
-	POLYBENCH_FREE_ARRAY(A2);
-	POLYBENCH_FREE_ARRAY(B1);
-	POLYBENCH_FREE_ARRAY(B2);
-	POLYBENCH_FREE_ARRAY(X1);
-	POLYBENCH_FREE_ARRAY(X2);
+	POLYBENCH_FREE_ARRAY(A);
+	POLYBENCH_FREE_ARRAY(B);
+	POLYBENCH_FREE_ARRAY(B_outputFromGpu);
+	POLYBENCH_FREE_ARRAY(X);
+	POLYBENCH_FREE_ARRAY(X_outputFromGpu);
 
     	return 0;
 }
