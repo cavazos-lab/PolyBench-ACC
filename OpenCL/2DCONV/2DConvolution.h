@@ -45,7 +45,8 @@
 #  endif
 # endif /* !N */
 
-# define _PB_N POLYBENCH_LOOP_BOUND(N,n)
+# define _PB_NI POLYBENCH_LOOP_BOUND(NI,ni)
+# define _PB_NJ POLYBENCH_LOOP_BOUND(NJ,nj)
 
 # ifndef DATA_TYPE
 #  define DATA_TYPE float

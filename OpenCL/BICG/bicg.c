@@ -67,17 +67,17 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void compareResults(DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE POLYBENCH_1D(s_outputFromGpu,NY,ny), 
+void compareResults(int nx, int ny, DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE POLYBENCH_1D(s_outputFromGpu,NY,ny), 
 		DATA_TYPE POLYBENCH_1D(q,NX,nx), DATA_TYPE POLYBENCH_1D(q_outputFromGpu,NX,nx))
 {
 	int i,fail;
 	fail = 0;
 
 	// Compare s with s_cuda
-	for (i=0; i<NX; i++)
+	for (i=0; i<nx; i++)
 	{
 		if (percentDiff(q[i], q_outputFromGpu[i]) > PERCENT_DIFF_ERROR_THRESHOLD)
 		{
@@ -85,7 +85,7 @@ void compareResults(DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE POLYBENCH_1D(s_ou
 		}
 	}
 
-	for (i=0; i<NY; i++)
+	for (i=0; i<ny; i++)
 	{
 		if (percentDiff(s[i], s_outputFromGpu[i]) > PERCENT_DIFF_ERROR_THRESHOLD)
 		{
@@ -95,7 +95,6 @@ void compareResults(DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE POLYBENCH_1D(s_ou
 	
 	// print results
 	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
-
 }
 
 
@@ -113,24 +112,24 @@ void read_cl_file()
 }
 
 
-void init_array(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx))
+void init_array(int nx, int ny, DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx))
 {
 	int i, j;
+	
+	for (i = 0; i < ny; i++)
+	{
+    		p[i] = i * M_PI;
+	}
 
-  	for (i = 0; i < NX; i++)
+	for (i = 0; i < nx; i++)
 	{
     		r[i] = i * M_PI;
 
-    		for (j = 0; j < NY; j++)
+    		for (j = 0; j < ny; j++)
 		{
       			A[i][j] = ((DATA_TYPE) i*j) / NX;
 		}
  	}
-	
-	for (i = 0; i < NY; i++)
-	{
-    		p[i] = i * M_PI;
-	}
 }
 
 
@@ -208,11 +207,8 @@ void cl_load_prog()
 	clFinish(clCommandQue);
 }
 
-void cl_launch_kernel()
+void cl_launch_kernel(int nx, int ny)
 {
-	int nx=NX;
-	int ny=NY;
-	
 	size_t localWorkSize[2], globalWorkSize[2];
 	localWorkSize[0] = DIM_LOCAL_WORK_GROUP_X;
 	localWorkSize[1] = DIM_LOCAL_WORK_GROUP_Y;
@@ -277,20 +273,20 @@ void cl_clean_up()
 }
 
 
-void bicg_cpu(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx), DATA_TYPE POLYBENCH_1D(s,NY,ny),
-	DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(q,NX,nx))
+void bicg_cpu(int nx, int ny, DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx), DATA_TYPE POLYBENCH_1D(s,NY,ny), 
+		DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(q,NX,nx))
 {
 	int i,j;
 	
-  	for (i = 0; i < NY; i++)
+  	for (i = 0; i < _PB_NY; i++)
 	{
 		s[i] = 0.0;
 	}
 
-	for (i = 0; i < NX; i++)
+	for (i = 0; i < _PB_NX; i++)
 	{
 		q[i] = 0.0;
-		for (j = 0; j < NY; j++)
+		for (j = 0; j < _PB_NY; j++)
 	  	{
 	    		s[j] = s[j] + r[i] * A[i][j];
 	    		q[i] = q[i] + A[i][j] * p[j];
@@ -323,21 +319,25 @@ void print_array(int nx, int ny,
 
 int main(void) 
 {
+	int nx = NX;
+	int ny = NY;
+
 	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NX,NY,nx,ny);
-	POLYBENCH_1D_ARRAY_DECL(r,DATA_TYPE,NX,nx);
 	POLYBENCH_1D_ARRAY_DECL(s,DATA_TYPE,NY,ny);
-	POLYBENCH_1D_ARRAY_DECL(p,DATA_TYPE,NY,ny);
 	POLYBENCH_1D_ARRAY_DECL(q,DATA_TYPE,NX,nx);
+	POLYBENCH_1D_ARRAY_DECL(p,DATA_TYPE,NY,ny);
+	POLYBENCH_1D_ARRAY_DECL(r,DATA_TYPE,NX,nx);
 	POLYBENCH_1D_ARRAY_DECL(s_outputFromGpu,DATA_TYPE,NY,ny);
 	POLYBENCH_1D_ARRAY_DECL(q_outputFromGpu,DATA_TYPE,NX,nx);
+
+	init_array(nx, ny, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(r));
 	
-	init_array(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(r));	
 	read_cl_file();
 	cl_initialization();
 	cl_mem_init(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(r), POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(q));
 	cl_load_prog();
 
-	cl_launch_kernel();
+	cl_launch_kernel(nx, ny);
 
 	errcode = clEnqueueReadBuffer(clCommandQue, s_mem_obj, CL_TRUE, 0, NY*sizeof(DATA_TYPE), POLYBENCH_ARRAY(s_outputFromGpu), 0, NULL, NULL);
 	errcode = clEnqueueReadBuffer(clCommandQue, q_mem_obj, CL_TRUE, 0, NX*sizeof(DATA_TYPE), POLYBENCH_ARRAY(q_outputFromGpu), 0, NULL, NULL);
@@ -348,18 +348,19 @@ int main(void)
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		bicg_cpu(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(r), POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(q));
+		bicg_cpu(nx, ny, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(r), POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(q));
 	
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 
-		compareResults(POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(s_outputFromGpu), POLYBENCH_ARRAY(q), POLYBENCH_ARRAY(q_outputFromGpu));
+		compareResults(nx, ny, POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(s_outputFromGpu), POLYBENCH_ARRAY(q), 
+			POLYBENCH_ARRAY(q_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(NX, NY, POLYBENCH_ARRAY(s_outputFromGpu), POLYBENCH_ARRAY(q_outputFromGpu));
+		print_array(nx, ny, POLYBENCH_ARRAY(s_outputFromGpu), POLYBENCH_ARRAY(q_outputFromGpu));
 	
 	#endif //RUN_ON_CPU
 

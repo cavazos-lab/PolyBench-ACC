@@ -60,18 +60,18 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void compareResults(DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B_outputFromGpu, NI, NJ, ni, nj))
+void compareResults(int ni, int nj, DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B_outputFromGpu, NI, NJ, ni, nj))
 {
 	int i, j, fail;
 	fail = 0;
 	
-	// Compare a and b
-	for (i=1; i < (NI-1); i++) 
+	// Compare outputs from CPU and GPU
+	for (i=1; i < (ni-1); i++) 
 	{
-		for (j=1; j < (NJ-1); j++) 
+		for (j=1; j < (nj-1); j++) 
 		{
 			if (percentDiff(B[i][j], B_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
@@ -82,7 +82,6 @@ void compareResults(DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBEN
 	
 	// Print results
 	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
-	
 }
 
 
@@ -100,13 +99,13 @@ void read_cl_file()
 }
 
 
-void init(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj))
+void init(int ni, int nj, DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj))
 {
 	int i, j;
 
-	for (i = 0; i < NI; ++i)
+	for (i = 0; i < ni; ++i)
     	{
-		for (j = 0; j < NJ; ++j)
+		for (j = 0; j < nj; ++j)
 		{
 			A[i][j] = (float)rand()/RAND_MAX;
         	}
@@ -174,16 +173,13 @@ void cl_load_prog()
 	// Create the OpenCL kernel
 	clKernel = clCreateKernel(clProgram, "Convolution2D_kernel", &errcode);
 	if(errcode != CL_SUCCESS) printf("Error in creating kernel\n");
+
 	clFinish(clCommandQue);
 }
 
 
-void cl_launch_kernel()
+void cl_launch_kernel(int ni, int nj)
 {
-	
-	int ni = NI;
-	int nj = NJ;
-
 	size_t localWorkSize[2], globalWorkSize[2];
 	localWorkSize[0] = DIM_LOCAL_WORK_GROUP_X;
 	localWorkSize[1] = DIM_LOCAL_WORK_GROUP_Y;
@@ -226,7 +222,7 @@ void cl_clean_up()
 	if(errcode != CL_SUCCESS) printf("Error in cleanup\n");
 }
 
-void conv2D(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj))
+void conv2D(int ni, int nj, DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj))
 {
 	int i, j;
 	DATA_TYPE c11, c12, c13, c21, c22, c23, c31, c32, c33;
@@ -236,9 +232,9 @@ void conv2D(DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B,
 	c13 = +0.4;  c23 = +0.7;  c33 = +0.10;
 
 
-	for (i = 1; i < NI - 1; ++i) // 0
+	for (i = 1; i < _PB_NI - 1; ++i) // 0
 	{
-		for (j = 1; j < NJ - 1; ++j) // 1
+		for (j = 1; j < _PB_NJ - 1; ++j) // 1
 		{
 			B[i][j] = c11 * A[(i - 1)][(j - 1)]  +  c12 * A[(i + 0)][(j - 1)]  +  c13 * A[(i + 1)][(j - 1)]
 				+ c21 * A[(i - 1)][(j + 0)]  +  c22 * A[(i + 0)][(j + 0)]  +  c23 * A[(i + 1)][(j + 0)] 
@@ -267,18 +263,22 @@ void print_array(int ni, int nj,
 
 int main(int argc, char *argv[])
 {
+	/* Retrieve problem size */
+	int ni = NI;
+	int nj = NJ;
+
 	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,NI,NJ,ni,nj);
   	POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,NI,NJ,ni,nj);
   	POLYBENCH_2D_ARRAY_DECL(B_outputFromGpu,DATA_TYPE,NI,NJ,ni,nj);
 
-	init(POLYBENCH_ARRAY(A));
+	init(ni, nj, POLYBENCH_ARRAY(A));
 
 	read_cl_file();
 	cl_initialization();
 	cl_mem_init(POLYBENCH_ARRAY(A));
 	cl_load_prog();
 
-	cl_launch_kernel();
+	cl_launch_kernel(ni, nj);
 
 	errcode = clEnqueueReadBuffer(clCommandQue, b_mem_obj, CL_TRUE, 0, NI*NJ*sizeof(DATA_TYPE), POLYBENCH_ARRAY(B_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
@@ -288,18 +288,18 @@ int main(int argc, char *argv[])
 		/* Start timer. */
   		polybench_start_instruments;
 
-		conv2D(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
+		conv2D(ni, nj, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
 	
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
   		polybench_stop_instruments;
  		polybench_print_instruments;
 
-		compareResults(POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
+		compareResults(ni, nj, POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(NI, NJ, POLYBENCH_ARRAY(B_outputFromGpu));
+		print_array(ni, nj, POLYBENCH_ARRAY(B_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

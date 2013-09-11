@@ -56,18 +56,18 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void compareResults(DATA_TYPE POLYBENCH_2D(A_cpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_outputFromGpu,N,N,n,n))
+void compareResults(int n, DATA_TYPE POLYBENCH_2D(A_cpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_outputFromGpu,N,N,n,n))
 {
 	int i, j, fail;
 	fail = 0;
 	
 	// Compare a and b
-	for (i=2; i<N-2; i++) 
+	for (i=0; i<n; i++) 
 	{
-		for (j=2; j<(N-2); j++) 
+		for (j=0; j<n; j++) 
 		{
 			if (percentDiff(A_cpu[i][j], A_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
@@ -95,15 +95,15 @@ void read_cl_file()
 }
 
 
-void init_array(DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
+void init_array(int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
 	int i, j;
 
-	for (i = 0; i < N; i++)
+	for (i = 0; i < n; i++)
 	{
-		for (j = 0; j < N; j++)
+		for (j = 0; j < n; j++)
 		{
-			A[i][j] = ((DATA_TYPE) i*j + 1.0f) / (float)N;
+			A[i][j] = ((DATA_TYPE) i*j + 1) / N;
 		}
 	}
 }
@@ -170,9 +170,9 @@ void cl_load_prog()
 }
 
 
-void cl_launch_kernel1(int k)
+void cl_launch_kernel1(int k, int n)
 {
-	if (k < (N-1))
+	if (k < (_PB_N-1))
 	{
 		size_t localWorkSize[2], globalWorkSize[2];
 		localWorkSize[0] = 256;
@@ -183,7 +183,8 @@ void cl_launch_kernel1(int k)
 		// Set the arguments of the kernel
 		errcode = clSetKernelArg(clKernel1, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 		errcode |= clSetKernelArg(clKernel1, 1, sizeof(int), (void *)&k);
-	
+		errcode |= clSetKernelArg(clKernel1, 2, sizeof(int), (void *)&n);
+
 		if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
 		// Execute the OpenCL kernel
@@ -194,9 +195,9 @@ void cl_launch_kernel1(int k)
 }
 
 
-void cl_launch_kernel2(int k)
+void cl_launch_kernel2(int k, int n)
 {
-	if (k < (N-1))
+	if (k < (_PB_N-1))
 	{
 		size_t localWorkSize[2], globalWorkSize[2];
 		localWorkSize[0] = 32;
@@ -207,6 +208,7 @@ void cl_launch_kernel2(int k)
 		// Set the arguments of the kernel
 		errcode = clSetKernelArg(clKernel2, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 		errcode |= clSetKernelArg(clKernel2, 1, sizeof(int), (void *)&k);
+		errcode |= clSetKernelArg(clKernel2, 2, sizeof(int), (void *)&n);
 	
 		if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
@@ -237,25 +239,24 @@ void cl_clean_up()
 }
 
 
-void lu(DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
+void lu(int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
-	int k, j, i;
-	for (k = 0; k < N; k++)
+	int i, j, k;
+	for (k = 0; k < _PB_N; k++)
     	{
-		for (j = k + 1; j < N; j++)
+		for (j = k + 1; j < _PB_N; j++)
 		{
 			A[k][j] = A[k][j] / A[k][k];
 		}
 
-		for(i = k + 1; i < N; i++)
+		for (i = k + 1; i < _PB_N; i++)
 		{
-			int j;
-			for (j = k + 1; j < N; j++)
+			for (j = k + 1; j < _PB_N; j++)
 			{
 				A[i][j] = A[i][j] - A[i][k] * A[k][j];
 			}
 		}
-    	}
+    }
 }
 
 
@@ -279,12 +280,12 @@ void print_array(int n,
 
 int main(void) 
 {
-	int i;
+	int n = N;
 
 	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,N,N,n,n);
-	POLYBENCH_2D_ARRAY_DECL(A_outputFromGpu,DATA_TYPE,N,N,n,n);
+  	POLYBENCH_2D_ARRAY_DECL(A_outputFromGpu,DATA_TYPE,N,N,n,n);
 
-	init_array(POLYBENCH_ARRAY(A));
+	init_array(n, POLYBENCH_ARRAY(A));
 
 	read_cl_file();
 	cl_initialization();
@@ -295,10 +296,10 @@ int main(void)
   	polybench_start_instruments;
 
 	int k;
-	for (k = 0; k < N; k++)
+	for (k = 0; k < _PB_N; k++)
     	{
-		cl_launch_kernel1(k);
-		cl_launch_kernel2(k);
+		cl_launch_kernel1(k, n);
+		cl_launch_kernel2(k, n);
 	}
 
 	/* Stop and print timer. */
@@ -314,18 +315,18 @@ int main(void)
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		lu(POLYBENCH_ARRAY(A));
+		lu(n, POLYBENCH_ARRAY(A));
 	
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 
-		compareResults(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(A_outputFromGpu));
+		compareResults(n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(A_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(N, POLYBENCH_ARRAY(A_outputFromGpu));
+		print_array(n, POLYBENCH_ARRAY(A_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

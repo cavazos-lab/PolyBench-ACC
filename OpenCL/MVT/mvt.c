@@ -63,16 +63,15 @@ size_t source_size;
 const int LIST_SIZE = N;
 char str_temp[1024];
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
-void compareResults(DATA_TYPE POLYBENCH_1D(x1,N,n), DATA_TYPE POLYBENCH_1D(x1_outputFromGpu,N,n), DATA_TYPE POLYBENCH_1D(x2,N,n), 
-	DATA_TYPE POLYBENCH_1D(x2_outputFromGpu,N,n))
+void compareResults(int n, DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x1_outputFromGpu, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(x2_outputFromGpu, N, n))
 {
 	int i, fail;
 	fail = 0;
 	
-	for (i=0; i<N; i++) 
+	for (i=0; i<n; i++) 
 	{
 		if (percentDiff(x1[i], x1_outputFromGpu[i]) > PERCENT_DIFF_ERROR_THRESHOLD)
 		{
@@ -87,7 +86,6 @@ void compareResults(DATA_TYPE POLYBENCH_1D(x1,N,n), DATA_TYPE POLYBENCH_1D(x1_ou
 	
 	// Print results
 	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
-
 }
 
 
@@ -105,21 +103,19 @@ void read_cl_file()
 }
 
 
-void init_arrays(DATA_TYPE POLYBENCH_2D(a,N,N,n,n), DATA_TYPE POLYBENCH_1D(x1,N,n), DATA_TYPE POLYBENCH_1D(x2,N,n), 
-	DATA_TYPE POLYBENCH_1D(y_1,N,n), DATA_TYPE POLYBENCH_1D(y_2,N,n))
+void init_array(int n, DATA_TYPE POLYBENCH_2D(A, N, N, n, n), DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(y1, N, n), DATA_TYPE POLYBENCH_1D(y2, N, n))
 {
-    	int i, j;
-	
-	for (i=0; i<N; i++) 
-   	{
-        	x1[i] = 0.0;
-        	x2[i] = 0.0;
-		y_1[i] = 0.0;
-        	y_2[i] = 0.0;
-		
-		for (j=0; j<N; j++)
+	int i, j;
+
+	for (i = 0; i < n; i++)
+	{
+		x1[i] = ((DATA_TYPE) i) / N;
+		x2[i] = ((DATA_TYPE) i + 1) / N;
+		y1[i] = ((DATA_TYPE) i + 3) / N;
+		y2[i] = ((DATA_TYPE) i + 4) / N;
+		for (j = 0; j < n; j++)
 		{
-			a[i][j] = (DATA_TYPE)(i+j+1.0)/N;
+			A[i][j] = ((DATA_TYPE) i*j) / N;
 		}
 	}
 }
@@ -199,12 +195,8 @@ void cl_load_prog()
 }
 
 
-void cl_launch_kernel()
+void cl_launch_kernel(int n)
 {
-	
-
-	int n = N;
-
 	size_t localWorkSize[2], globalWorkSize[2];
 	localWorkSize[0] = DIM_LOCAL_WORK_GROUP_X;
 	localWorkSize[1] = DIM_LOCAL_WORK_GROUP_Y;
@@ -264,24 +256,23 @@ void cl_clean_up()
 }
 
 
-void runMvt(DATA_TYPE POLYBENCH_2D(a,N,N,n,n), DATA_TYPE POLYBENCH_1D(x1,N,n), DATA_TYPE POLYBENCH_1D(x2,N,n), 
-	DATA_TYPE POLYBENCH_1D(y1,N,n), DATA_TYPE POLYBENCH_1D(y2,N,n))
+void runMvt(int n, DATA_TYPE POLYBENCH_2D(a, N, N, n, n), DATA_TYPE POLYBENCH_1D(x1, N, n), DATA_TYPE POLYBENCH_1D(x2, N, n), DATA_TYPE POLYBENCH_1D(y1, N, n), DATA_TYPE POLYBENCH_1D(y2, N, n))
 {
-	int i, j, k, l;
+	int i, j;
 	
-	for (i=0; i<N; i++) 
+	for (i=0; i<_PB_N; i++) 
 	{
 		for (j=0; j<N; j++) 
 		{
-       			x1[i] = x1[i] + a[i][j] * y1[j];
+       		x1[i] = x1[i] + a[i][j] * y1[j];
         	}
     	}
 	
-	for (k=0; k<N; k++) 
+	for (i=0; i<_PB_N; i++) 
 	{
-		for (l=0; l<N; l++) 
+		for (j=0; j<_PB_N; j++) 
 		{
- 		       	x2[k] = x2[k] + a[k][l] * y2[l];
+ 		      	x2[i] = x2[i] + a[j][i] * y2[j];
       		}
     	}
 }
@@ -305,8 +296,11 @@ void print_array(int n,
 }
 
 
+
 int main(void) 
 {
+	int n = N;
+
 	POLYBENCH_2D_ARRAY_DECL(a,DATA_TYPE,N,N,n,n);
 	POLYBENCH_1D_ARRAY_DECL(x1,DATA_TYPE,N,n);
 	POLYBENCH_1D_ARRAY_DECL(x2,DATA_TYPE,N,n);
@@ -315,13 +309,14 @@ int main(void)
 	POLYBENCH_1D_ARRAY_DECL(y_1,DATA_TYPE,N,n);
 	POLYBENCH_1D_ARRAY_DECL(y_2,DATA_TYPE,N,n);
 
-	init_arrays(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2));
+	init_array(n, POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2));
+	
 	read_cl_file();
 	cl_initialization();
 	cl_mem_init(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2));
 	cl_load_prog();
 
-	cl_launch_kernel();
+	cl_launch_kernel(n);
 
 	errcode = clEnqueueReadBuffer(clCommandQue, x1_mem_obj, CL_TRUE, 0, N*sizeof(DATA_TYPE), POLYBENCH_ARRAY(x1_outputFromGpu), 0, NULL, NULL);
 	errcode = clEnqueueReadBuffer(clCommandQue, x2_mem_obj, CL_TRUE, 0, N*sizeof(DATA_TYPE), POLYBENCH_ARRAY(x2_outputFromGpu), 0, NULL, NULL);
@@ -332,18 +327,18 @@ int main(void)
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		runMvt(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2));
+		runMvt(n, POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(y_1), POLYBENCH_ARRAY(y_2));
 	
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;	
 
-		compareResults(POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(x2_outputFromGpu));
+		compareResults(n, POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(x2_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(N, POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2_outputFromGpu));
+		print_array(n, POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

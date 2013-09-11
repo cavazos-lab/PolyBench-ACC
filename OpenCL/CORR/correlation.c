@@ -72,25 +72,24 @@ size_t source_size;
 #define RUN_ON_CPU
 
 
-void compareResults(DATA_TYPE POLYBENCH_2D(symmat,M,N,m,n), DATA_TYPE POLYBENCH_2D(symmat_outputFromGpu,M,N,m,n))
+void compareResults(int m, int n, DATA_TYPE POLYBENCH_2D(symmat, M, N, m, n), DATA_TYPE POLYBENCH_2D(symmat_outputFromGpu, M, N, m, n))
 {
 	int i,j,fail;
 	fail = 0;
 
-	for (i=0; i<M; i++)
+	for (i=0; i < m; i++)
 	{
-		for (j=0; j<N; j++)
+		for (j=0; j < n; j++)
 		{
 			if (percentDiff(symmat[i][j], symmat_outputFromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD)
 			{
-				fail++;
+				fail++;		
 			}
 		}
 	}
 	
 	// print results
 	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
-
 }
 
 
@@ -108,17 +107,17 @@ void read_cl_file()
 }
 
 
-void init_arrays(DATA_TYPE POLYBENCH_2D(data,M,N,m,n))
+void init_arrays(int m, int n, DATA_TYPE POLYBENCH_2D(data, M, N, m, n))
 {
 	int i, j;
 	
-	for (i=0; i<M; i++) 
+	for (i=0; i < m; i++) 
 	{
-    		for (j=0; j<N; j++) 
+    		for (j=0; j < n; j++) 
 		{
        		data[i][j] = ((DATA_TYPE) i*j)/ M;	
        	}
-	}
+    	}
 }
 
 
@@ -199,13 +198,8 @@ void cl_load_prog()
 }
 
 
-void cl_launch_kernel()
+void cl_launch_kernel(int m, int n)
 {
-	
-
-	int m = M;
-	int n = N;
-
 	DATA_TYPE float_n = FLOAT_N;
 	DATA_TYPE eps = EPS;
 
@@ -323,16 +317,17 @@ void cl_clean_up()
 }
 
 
-void correlation(DATA_TYPE POLYBENCH_2D(data,M,N,m,n), DATA_TYPE POLYBENCH_1D(mean,M,m), DATA_TYPE POLYBENCH_1D(stddev,M,m), DATA_TYPE POLYBENCH_2D(symmat,M,M,m,m))
+void correlation(int m, int n, DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DATA_TYPE POLYBENCH_1D(mean, M, m), DATA_TYPE POLYBENCH_1D(stddev, M, m),
+		DATA_TYPE POLYBENCH_2D(symmat, M, N, m, n))
 {
 	int i, j, j1, j2;	
 	
 	// Determine mean of column vectors of input data matrix 
-  	for (j = 0; j < M; j++)
+  	for (j = 0; j < _PB_M; j++)
    	{
   		mean[j] = 0.0;
 
-   		for (i = 0; i < N; i++)
+   		for (i = 0; i < _PB_N; i++)
 		{
 			mean[j] += data[i][j];
    		}
@@ -341,48 +336,47 @@ void correlation(DATA_TYPE POLYBENCH_2D(data,M,N,m,n), DATA_TYPE POLYBENCH_1D(me
    	}
 
 	// Determine standard deviations of column vectors of data matrix. 
-  	for (j = 0; j < M; j++)
+  	for (j = 0; j < _PB_M; j++)
    	{
    		stddev[j] = 0.0;
       
-		for (i = 0; i < N; i++)
+		for (i = 0; i < _PB_N; i++)
 		{
 			stddev[j] += (data[i][j] - mean[j]) * (data[i][j] - mean[j]);
 		}
 		
 		stddev[j] /= FLOAT_N;
-    		stddev[j] = sqrt_of_array_cell(stddev, j);
-    		stddev[j] = stddev[j] <= EPS ? 1.0 : stddev[j];
+		stddev[j] = sqrt_of_array_cell(stddev, j);
+		stddev[j] = stddev[j] <= EPS ? 1.0 : stddev[j];
 	}
 
  	// Center and reduce the column vectors. 
-  	for (i = 0; i < N; i++)
+  	for (i = 0; i < _PB_N; i++)
 	{
-		for (j = 0; j < M; j++)
-    		{
+		for (j = 0; j < _PB_M; j++)
+		{
 			data[i][j] -= mean[j];
-			data[i][j] /= sqrt(FLOAT_N) ;
-			data[i][j] /= stddev[j];
-    		}
+			data[i][j] /= (sqrt(FLOAT_N)*stddev[j]) ;
+		}
 	}
 
 	// Calculate the m * m correlation matrix. 
-  	for (j1 = 0; j1 < M-1; j1++)
+  	for (j1 = 0; j1 < _PB_M-1; j1++)
 	{	
-    		symmat[j1][j1] = 1.0;
+		symmat[j1][j1] = 1.0;
     
-		for (j2 = j1+1; j2 < M; j2++)
+		for (j2 = j1+1; j2 < _PB_M; j2++)
 		{
 	  		symmat[j1][j2] = 0.0;
 
-	  		for (i = 0; i < N; i++)
+	  		for (i = 0; i < _PB_N; i++)
 			{
 	   			symmat[j1][j2] += (data[i][j1] * data[i][j2]);
 			}
 
 	  		symmat[j2][j1] = symmat[j1][j2];
 		}
-    }
+	}
  
 	symmat[M-1][M-1] = 1.0;
 }
@@ -408,19 +402,23 @@ void print_array(int m,
 
 int main(void) 
 {	
+	int m = M;
+	int n = N;
+
 	POLYBENCH_2D_ARRAY_DECL(data,DATA_TYPE,M,N,m,n);
   	POLYBENCH_1D_ARRAY_DECL(mean,DATA_TYPE,M,m);
   	POLYBENCH_1D_ARRAY_DECL(stddev,DATA_TYPE,M,m);
 	POLYBENCH_2D_ARRAY_DECL(symmat,DATA_TYPE,M,N,m,n);
   	POLYBENCH_2D_ARRAY_DECL(symmat_outputFromGpu,DATA_TYPE,M,N,m,n);
-	
-	init_arrays(POLYBENCH_ARRAY(data));
+  	
+	init_arrays(m, n, POLYBENCH_ARRAY(data));
+
 	read_cl_file();
 	cl_initialization();
 	cl_mem_init(POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(mean), POLYBENCH_ARRAY(stddev), POLYBENCH_ARRAY(symmat_outputFromGpu));
 	cl_load_prog();
 
-	cl_launch_kernel();
+	cl_launch_kernel(m, n);
 
 	errcode = clEnqueueReadBuffer(clCommandQue, symmat_mem_obj, CL_TRUE, 0, M * N * sizeof(DATA_TYPE), POLYBENCH_ARRAY(symmat_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
@@ -430,18 +428,18 @@ int main(void)
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		correlation(POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(mean), POLYBENCH_ARRAY(stddev), POLYBENCH_ARRAY(symmat));
+		correlation(m, n, POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(mean), POLYBENCH_ARRAY(stddev), POLYBENCH_ARRAY(symmat));
 	
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 
-		compareResults(POLYBENCH_ARRAY(symmat), POLYBENCH_ARRAY(symmat_outputFromGpu));
+		compareResults(m, n, POLYBENCH_ARRAY(symmat), POLYBENCH_ARRAY(symmat_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(M, POLYBENCH_ARRAY(symmat_outputFromGpu));
+		print_array(m, POLYBENCH_ARRAY(symmat_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

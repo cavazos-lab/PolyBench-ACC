@@ -57,7 +57,7 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
-//#define RUN_ON_CPU
+#define RUN_ON_CPU
 
 
 void read_cl_file()
@@ -74,15 +74,15 @@ void read_cl_file()
 }
 
 
-void init(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk))
+void init(int ni, int nj, int nk, DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk))
 {
 	int i, j, k;
 
-	for (i = 0; i < NI; ++i)
+	for (i = 0; i < ni; ++i)
     	{
-		for (j = 0; j < NJ; ++j)
+		for (j = 0; j < nj; ++j)
 		{
-			for (k = 0; k < NK; ++k)
+			for (k = 0; k < nk; ++k)
 			{
 				A[i][j][k] = i % 12 + 2 * (j % 7) + 3 * (k % 13);
 			}
@@ -155,12 +155,8 @@ void cl_load_prog()
 }
 
 
-void cl_launch_kernel()
+void cl_launch_kernel(int ni, int nj, int nk)
 {
-	int ni = NI;
-	int nj = NJ;
-	int nk = NK;
-
 	size_t localWorkSize[2], globalWorkSize[2];
 	localWorkSize[0] = DIM_LOCAL_WORK_GROUP_X;
 	localWorkSize[1] = DIM_LOCAL_WORK_GROUP_Y;
@@ -213,17 +209,17 @@ void cl_clean_up()
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B_outputFromGpu, NI, NJ, NK, ni, nj, nk))
+void compareResults(int ni, int nj, int nk, DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B_outputFromGpu, NI, NJ, NK, ni, nj, nk))
 {
 	int i, j, k, fail;
 	fail = 0;
 	
-	// Compare result from cpu and gpu...
-	for (i = 1; i < NI - 1; ++i) // 0
+	// Compare result from cpu and gpu
+	for (i = 1; i < ni - 1; ++i) // 0
 	{
-		for (j = 1; j < NJ - 1; ++j) // 1
+		for (j = 1; j < nj - 1; ++j) // 1
 		{
-			for (k = 1; k < NK - 1; ++k) // 2
+			for (k = 1; k < nk - 1; ++k) // 2
 			{
 				if (percentDiff(B[i][j][k], B_outputFromGpu[i][j][k]) > PERCENT_DIFF_ERROR_THRESHOLD)
 				{
@@ -238,7 +234,7 @@ void compareResults(DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk), DATA_TYPE
 }
 
 
-void conv3D(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk))
+void conv3D(int ni, int nj, int nk, DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBENCH_3D(B, NI, NJ, NK, ni, nj, nk))
 {
 	int i, j, k;
 	DATA_TYPE c11, c12, c13, c21, c22, c23, c31, c32, c33;
@@ -247,13 +243,12 @@ void conv3D(DATA_TYPE POLYBENCH_3D(A, NI, NJ, NK, ni, nj, nk), DATA_TYPE POLYBEN
 	c12 = -3;  c22 = +6;  c32 = -9;
 	c13 = +4;  c23 = +7;  c33 = +10;
 
-	for (i = 1; i < NI - 1; ++i) // 0
+	for (i = 1; i < _PB_NI - 1; ++i) // 0
 	{
-		for (j = 1; j < NJ - 1; ++j) // 1
+		for (j = 1; j < _PB_NJ - 1; ++j) // 1
 		{
-			for (k = 1; k < NK -1; ++k) // 2
+			for (k = 1; k < _PB_NK -1; ++k) // 2
 			{
-				//printf("i:%d\nj:%d\nk:%d\n", i, j, k);
 				B[i][j][k] = c11 * A[(i - 1)][(j - 1)][(k - 1)]  +  c13 * A[(i + 1)][(j - 1)][(k - 1)]
 					     +   c21 * A[(i - 1)][(j - 1)][(k - 1)]  +  c23 * A[(i + 1)][(j - 1)][(k - 1)]
 					     +   c31 * A[(i - 1)][(j - 1)][(k - 1)]  +  c33 * A[(i + 1)][(j - 1)][(k - 1)]
@@ -289,17 +284,22 @@ void print_array(int ni, int nj, int nk,
 
 int main(void) 
 {	
+	int ni = NI;
+	int nj = NJ;
+	int nk = NK;
+
 	POLYBENCH_3D_ARRAY_DECL(A,DATA_TYPE,NI,NJ,NK,ni,nj,nk);
 	POLYBENCH_3D_ARRAY_DECL(B,DATA_TYPE,NI,NJ,NK,ni,nj,nk);
 	POLYBENCH_3D_ARRAY_DECL(B_outputFromGpu,DATA_TYPE,NI,NJ,NK,ni,nj,nk);
 
-	init(POLYBENCH_ARRAY(A));
+	init(ni, nj, nk, POLYBENCH_ARRAY(A));
+
 	read_cl_file();
 	cl_initialization();
 	cl_mem_init(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
 	cl_load_prog();
 
-	cl_launch_kernel();
+	cl_launch_kernel(ni, nj, nk);
 
 	errcode = clEnqueueReadBuffer(clCommandQue, b_mem_obj, CL_TRUE, 0, NI * NJ * NK * sizeof(DATA_TYPE), POLYBENCH_ARRAY(B_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
@@ -309,18 +309,18 @@ int main(void)
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		conv3D(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
+		conv3D(ni, nj, nk, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B));
 	
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 
-		compareResults(POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
+		compareResults(ni, nj, nk, POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
 
 	#else //print output to stderr so no dead code elimination
 
-		print_array(NI, NJ, NK, POLYBENCH_ARRAY(B_outputFromGpu));
+		print_array(ni, nj, nk, POLYBENCH_ARRAY(B_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 

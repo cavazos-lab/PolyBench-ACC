@@ -14,31 +14,28 @@
 #pragma OPENCL EXTENSION cl_amd_fp64 : enable
 #endif
 
-#ifndef N
-# define N 2048
-#endif
 
 typedef float DATA_TYPE;
 
 
 
-__kernel void lu_kernel1(__global DATA_TYPE *A, int k)
+__kernel void lu_kernel1(__global DATA_TYPE *A, int k, int n)
 {
 	int j = get_global_id(0) + (k + 1);
 	
-	if ((j < N))
+	if ((j < n))
 	{
-		A[k*N + j] = A[k*N + j] / A[k*N + k];
+		A[k*n + j] = A[k*n + j] / A[k*n + k];
 	}
 }
 
-__kernel void lu_kernel2(__global DATA_TYPE *A, int k)
+__kernel void lu_kernel2(__global DATA_TYPE *A, int k, int n)
 {
 	int j = get_global_id(0) + (k + 1);
 	int i = get_global_id(1) + (k + 1);
 	
-	if ((i < N) && (j < N))
+	if ((i < n) && (j < n))
 	{
-		A[i*N + j] = A[i*N + j] - A[i*N + k] * A[k*N + j];
+		A[i*n + j] = A[i*n + j] - A[i*n + k] * A[k*n + j];
 	}
 }

@@ -17,7 +17,7 @@
 typedef float DATA_TYPE;
 
 
-__kernel void gramschmidt_kernel1(__global DATA_TYPE *a, __global DATA_TYPE *r, __global DATA_TYPE *q, int k, int m, int n)
+__kernel void gramschmidt_kernel1(__global DATA_TYPE *a, __global DATA_TYPE *r, __global DATA_TYPE *q, int k, int ni, int nj)
 {
 	int tid = get_global_id(0);
 	
@@ -25,43 +25,43 @@ __kernel void gramschmidt_kernel1(__global DATA_TYPE *a, __global DATA_TYPE *r, 
 	{
 		DATA_TYPE nrm = 0.0;
 		int i;
-		for (i = 0; i < m; i++)
+		for (i = 0; i < ni; i++)
 		{
-			nrm += a[i * n + k] * a[i * n + k];
+			nrm += a[i * nj + k] * a[i * nj + k];
 		}
-      		r[k * n + k] = sqrt(nrm);
+      		r[k * nj + k] = sqrt(nrm);
 	}
 }
 
 
-__kernel void gramschmidt_kernel2(__global DATA_TYPE *a, __global DATA_TYPE *r, __global DATA_TYPE *q, int k, int m, int n)
+__kernel void gramschmidt_kernel2(__global DATA_TYPE *a, __global DATA_TYPE *r, __global DATA_TYPE *q, int k, int ni, int nj)
 {
 	int i = get_global_id(0);
 
-        if (i < m)
+        if (i < ni)
 	{	
-		q[i * n + k] = a[i * n + k] / r[k * n + k];
+		q[i * nj + k] = a[i * nj + k] / r[k * nj + k];
 	}
 }
 
 
-__kernel void gramschmidt_kernel3(__global DATA_TYPE *a, __global DATA_TYPE *r, __global DATA_TYPE *q, int k, int m, int n)
+__kernel void gramschmidt_kernel3(__global DATA_TYPE *a, __global DATA_TYPE *r, __global DATA_TYPE *q, int k, int ni, int nj)
 {
 	int j = get_global_id(0) + (k+1);
 
-	if ((j < n))
+	if ((j < nj))
 	{
-		r[k*n + j] = 0.0;
+		r[k*nj + j] = 0.0;
 
 		int i;
-		for (i = 0; i < m; i++)
+		for (i = 0; i < ni; i++)
 		{
-			r[k*n + j] += q[i*n + k] * a[i*n + j];
+			r[k*nj + j] += q[i*nj + k] * a[i*nj + j];
 		}
 		
-		for (i = 0; i < m; i++)
+		for (i = 0; i < ni; i++)
 		{
-			a[i*n + j] -= q[i*n + k] * r[k*n + j];
+			a[i*nj + j] -= q[i*nj + k] * r[k*nj + j];
 		}
 	}
 }

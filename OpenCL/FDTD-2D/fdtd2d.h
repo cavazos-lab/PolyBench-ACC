@@ -50,7 +50,9 @@
 #  endif
 # endif /* !N */
 
-# define _PB_N POLYBENCH_LOOP_BOUND(N,n)
+# define _PB_TMAX POLYBENCH_LOOP_BOUND(TMAX,tmax)
+# define _PB_NX POLYBENCH_LOOP_BOUND(NX,nx)
+# define _PB_NY POLYBENCH_LOOP_BOUND(NY,ny)
 
 # ifndef DATA_TYPE
 #  define DATA_TYPE float

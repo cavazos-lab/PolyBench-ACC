@@ -12,7 +12,7 @@ do
 		cd $currDir
 		pwd
 		make clean
-		make
+		#make
 		cd ..
     fi
 done

@@ -72,46 +72,47 @@ unsigned int mem_size_C;
 //define RUN_ON_CPU
 
 
-void init_array(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
+void init_array(int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
 {
-  int i, j;
+  	int i, j;
 
-  for (i = 0; i < N; i++)
-    for (j = 0; j < N; j++)
-      {
-	X[i][j] = ((DATA_TYPE) i*(j+1) + 1) / N;
-	A[i][j] = ((DATA_TYPE) (i-1)*(j+4) + 2) / N;
-	B[i][j] = ((DATA_TYPE) (i+3)*(j+7) + 3) / N;
-      }
+  	for (i = 0; i < n; i++)
+	{
+    		for (j = 0; j < n; j++)
+      		{
+			X[i][j] = ((DATA_TYPE) i*(j+1) + 1) / N;
+			A[i][j] = ((DATA_TYPE) (i-1)*(j+4) + 2) / N;
+			B[i][j] = ((DATA_TYPE) (i+3)*(j+7) + 3) / N;
+      		}
+	}
 }
 
 
-void compareResults(DATA_TYPE POLYBENCH_2D(B1,N,N,n,n), DATA_TYPE POLYBENCH_2D(B2,N,N,n,n), DATA_TYPE POLYBENCH_2D(X1,N,N,n,n), DATA_TYPE POLYBENCH_2D(X2,N,N,n,n))
+void compareResults(int n, DATA_TYPE POLYBENCH_2D(B_cpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(B_fromGpu,N,N,n,n), DATA_TYPE POLYBENCH_2D(X_cpu,N,N,n,n), 
+			DATA_TYPE POLYBENCH_2D(X_fromGpu,N,N,n,n))
 {
 	int i, j, fail;
 	fail = 0;
 	
-	// Compare a and b
-	for (i=0; i<N; i++) 
+	// Compare b and x output on cpu and gpu
+	for (i=0; i < n; i++) 
 	{
-		for (j=0; j<N; j++) 
+		for (j=0; j < n; j++) 
 		{
-			if (percentDiff(B1[i][j], B2[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
+			if (percentDiff(B_cpu[i][j], B_fromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
 				fail++;
-
 			}
 		}
 	}
 	
-	for (i=0; i<N; i++) 
+	for (i=0; i<n; i++) 
 	{
-		for (j=0; j<(N); j++)
+		for (j=0; j<n; j++) 
 		{
-			if (percentDiff(X1[i][j], X2[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
+			if (percentDiff(X_cpu[i][j], X_fromGpu[i][j]) > PERCENT_DIFF_ERROR_THRESHOLD) 
 			{
 				fail++;
-
 			}
 		}
 	}
@@ -207,7 +208,7 @@ void cl_load_prog()
 	clFinish(clCommandQue);
 }
 
-void cl_launch_kernel1()
+void cl_launch_kernel1(int n)
 {
 	size_t localWorkSize[2], globalWorkSize[2];
 	localWorkSize[0] = DIM_LOCAL_WORK_GROUP_X;
@@ -219,6 +220,7 @@ void cl_launch_kernel1()
 	errcode =  clSetKernelArg(clKernel1, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 	errcode |= clSetKernelArg(clKernel1, 1, sizeof(cl_mem), (void *)&b_mem_obj);
 	errcode |= clSetKernelArg(clKernel1, 2, sizeof(cl_mem), (void *)&c_mem_obj);
+	errcode |= clSetKernelArg(clKernel1, 3, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
 	// Execute the OpenCL kernel
@@ -227,7 +229,7 @@ void cl_launch_kernel1()
 	clFinish(clCommandQue);
 }
 
-void cl_launch_kernel2()
+void cl_launch_kernel2(int n)
 {
 	size_t localWorkSize[2], globalWorkSize[2];
 	localWorkSize[0] = DIM_LOCAL_WORK_GROUP_X;
@@ -239,6 +241,7 @@ void cl_launch_kernel2()
 	errcode =  clSetKernelArg(clKernel2, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 	errcode |= clSetKernelArg(clKernel2, 1, sizeof(cl_mem), (void *)&b_mem_obj);
 	errcode |= clSetKernelArg(clKernel2, 2, sizeof(cl_mem), (void *)&c_mem_obj);
+	errcode |= clSetKernelArg(clKernel2, 3, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
 	// Execute the OpenCL kernel
@@ -247,7 +250,7 @@ void cl_launch_kernel2()
 	clFinish(clCommandQue);
 }
 
-void cl_launch_kernel3()
+void cl_launch_kernel3(int n)
 {
 	size_t localWorkSize[2], globalWorkSize[2];
 	localWorkSize[0] = DIM_LOCAL_WORK_GROUP_X;
@@ -259,6 +262,7 @@ void cl_launch_kernel3()
 	errcode =  clSetKernelArg(clKernel3, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 	errcode |= clSetKernelArg(clKernel3, 1, sizeof(cl_mem), (void *)&b_mem_obj);
 	errcode |= clSetKernelArg(clKernel3, 2, sizeof(cl_mem), (void *)&c_mem_obj);
+	errcode |= clSetKernelArg(clKernel3, 3, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
 	// Execute the OpenCL kernel
@@ -267,7 +271,7 @@ void cl_launch_kernel3()
 	clFinish(clCommandQue);
 }
 
-void cl_launch_kernel4(int i)
+void cl_launch_kernel4(int i, int n)
 {
 	size_t localWorkSize[2], globalWorkSize[2];
 	localWorkSize[0] = DIM_LOCAL_WORK_GROUP_X;
@@ -280,6 +284,7 @@ void cl_launch_kernel4(int i)
 	errcode |= clSetKernelArg(clKernel4, 1, sizeof(cl_mem), (void *)&b_mem_obj);
 	errcode |= clSetKernelArg(clKernel4, 2, sizeof(cl_mem), (void *)&c_mem_obj);
 	errcode |= clSetKernelArg(clKernel4, 3, sizeof(int), (void *)&i);
+	errcode |= clSetKernelArg(clKernel4, 4, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
 	// Execute the OpenCL kernel
@@ -288,7 +293,7 @@ void cl_launch_kernel4(int i)
 	clFinish(clCommandQue);
 }
 
-void cl_launch_kernel5()
+void cl_launch_kernel5(int n)
 {
 	size_t localWorkSize[2], globalWorkSize[2];
 	localWorkSize[0] = DIM_LOCAL_WORK_GROUP_X;
@@ -300,6 +305,7 @@ void cl_launch_kernel5()
 	errcode =  clSetKernelArg(clKernel5, 0, sizeof(cl_mem), (void *)&a_mem_obj);
 	errcode |= clSetKernelArg(clKernel5, 1, sizeof(cl_mem), (void *)&b_mem_obj);
 	errcode |= clSetKernelArg(clKernel5, 2, sizeof(cl_mem), (void *)&c_mem_obj);
+	errcode |= clSetKernelArg(clKernel5, 3, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
 	// Execute the OpenCL kernel
@@ -308,7 +314,7 @@ void cl_launch_kernel5()
 	clFinish(clCommandQue);
 }
 
-void cl_launch_kernel6(int i)
+void cl_launch_kernel6(int i, int n)
 {
 	size_t localWorkSize[2], globalWorkSize[2];
 	localWorkSize[0] = DIM_LOCAL_WORK_GROUP_X;
@@ -321,6 +327,7 @@ void cl_launch_kernel6(int i)
 	errcode |= clSetKernelArg(clKernel6, 1, sizeof(cl_mem), (void *)&b_mem_obj);
 	errcode |= clSetKernelArg(clKernel6, 2, sizeof(cl_mem), (void *)&c_mem_obj);
 	errcode |= clSetKernelArg(clKernel6, 3, sizeof(int), (void *)&i);
+	errcode |= clSetKernelArg(clKernel6, 4, sizeof(int), (void *)&n);
 	if(errcode != CL_SUCCESS) printf("Error in seting arguments\n");
 
 	// Execute the OpenCL kernel
@@ -349,41 +356,54 @@ void cl_clean_up()
 	if(errcode != CL_SUCCESS) printf("Error in cleanup\n");
 }
 
-void adi(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
+
+void adi(int tsteps, int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
 {
-	int t;
-	int i1;
-	int i2;
-
-	for (t = 0; t < TSTEPS; t++)
+	for (int t = 0; t < _PB_TSTEPS; t++)
     	{
-      		for (i1 = 0; i1 < N; i1++)
-			for (i2 = 1; i2 < N; i2++)
-	  		{
-	    			X[i1][i2] = X[i1][i2] - X[i1][(i2-1)] * A[i1][i2] / B[i1][(i2-1)];
-	    			B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][(i2-1)];
-	  		}
-
-      		for (i1 = 0; i1 < N; i1++)
-			X[i1][(N-1)] = X[i1][(N-1)] / B[i1][(N-1)];
-
-      		for (i1 = 0; i1 < N; i1++)
-			for (i2 = 0; i2 < N-2; i2++)
-	  			X[i1][(N-i2-2)] = (X[i1][(N-2-i2)] - X[i1][(N-2-i2-1)] * A[i1][(N-i2-3)]) / B[i1][(N-3-i2)];
-
-      		for (i1 = 1; i1 < N; i1++)
-			for (i2 = 0; i2 < N; i2++) 
+    		for (int i1 = 0; i1 < _PB_N; i1++)
+		{
+			for (int i2 = 1; i2 < _PB_N; i2++)
 			{
-	  			X[i1][i2] = X[i1][i2] - X[(i1-1)][i2] * A[i1][i2] / B[(i1-1)][i2];
-	  			B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[(i1-1)][i2];
+				X[i1][i2] = X[i1][i2] - X[i1][(i2-1)] * A[i1][i2] / B[i1][(i2-1)];
+				B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][(i2-1)];
 			}
+		}
 
-      		for (i2 = 0; i2 < N; i2++)
+	   	for (int i1 = 0; i1 < _PB_N; i1++)
+		{
+			X[i1][(N-1)] = X[i1][(N-1)] / B[i1][(N-1)];
+		}
+
+	   	for (int i1 = 0; i1 < _PB_N; i1++)
+		{
+			for (int i2 = 0; i2 < _PB_N-2; i2++)
+			{
+				X[i1][(N-i2-2)] = (X[i1][(N-2-i2)] - X[i1][(N-2-i2-1)] * A[i1][(N-i2-3)]) / B[i1][(N-3-i2)];
+			}
+		}
+
+	   	for (int i1 = 1; i1 < _PB_N; i1++)
+		{
+			for (int i2 = 0; i2 < _PB_N; i2++) 
+			{
+		  		X[i1][i2] = X[i1][i2] - X[(i1-1)][i2] * A[i1][i2] / B[(i1-1)][i2];
+		  		B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[(i1-1)][i2];
+			}
+		}
+
+	   	for (int i2 = 0; i2 < _PB_N; i2++)
+		{
 			X[(N-1)][i2] = X[(N-1)][i2] / B[(N-1)][i2];
+		}
 
-      		for (i1 = 0; i1 < N-2; i1++)
-			for (i2 = 0; i2 < N; i2++)
-	  			X[(N-2-i1)][i2] = (X[(N-2-i1)][i2] - X[(N-i1-3)][i2] * A[(N-3-i1)][i2]) / B[(N-2-i1)][i2];
+	   	for (int i1 = 0; i1 < _PB_N-2; i1++)
+		{
+			for (int i2 = 0; i2 < _PB_N; i2++)
+			{
+		 	 	X[(N-2-i1)][i2] = (X[(N-2-i1)][i2] - X[(N-i1-3)][i2] * A[(N-3-i1)][i2]) / B[(N-2-i1)][i2];
+			}
+		}
     }
 }
 
@@ -408,15 +428,16 @@ void print_array(int n,
 
 int main(void) 
 {
-	POLYBENCH_2D_ARRAY_DECL(A1,DATA_TYPE,N,N,n,n);
-	POLYBENCH_2D_ARRAY_DECL(A2,DATA_TYPE,N,N,n,n);
-	POLYBENCH_2D_ARRAY_DECL(B1,DATA_TYPE,N,N,n,n);
-	POLYBENCH_2D_ARRAY_DECL(B2,DATA_TYPE,N,N,n,n);
-	POLYBENCH_2D_ARRAY_DECL(X1,DATA_TYPE,N,N,n,n);
-	POLYBENCH_2D_ARRAY_DECL(X2,DATA_TYPE,N,N,n,n);
+	int tsteps = TSTEPS;
+	int n = N;
 
-	init_array(POLYBENCH_ARRAY(A1), POLYBENCH_ARRAY(B1), POLYBENCH_ARRAY(X1));
-	init_array(POLYBENCH_ARRAY(A2), POLYBENCH_ARRAY(B2), POLYBENCH_ARRAY(X2));
+	POLYBENCH_2D_ARRAY_DECL(A,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(B,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(B_outputFromGpu,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(X,DATA_TYPE,N,N,n,n);
+	POLYBENCH_2D_ARRAY_DECL(X_outputFromGpu,DATA_TYPE,N,N,n,n);
+
+	init_array(n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(X));
 
 	read_cl_file();
 	cl_initialization();
@@ -428,24 +449,24 @@ int main(void)
 
 	int t, i1;
 
-	for (t = 0; t < TSTEPS; t++)
+	for (t = 0; t < _PB_TSTEPS; t++)
 	{
-		cl_launch_kernel1();
+		cl_launch_kernel1(n);
 
-		cl_launch_kernel2();
+		cl_launch_kernel2(n);
 
-		cl_launch_kernel3();
+		cl_launch_kernel3(n);
 	
-		for (i1 = 1; i1 < N; i1++)
+		for (i1 = 1; i1 < _PB_N; i1++)
 		{
-			cl_launch_kernel4(i1);
+			cl_launch_kernel4(i1, n);
 		}
 
-		cl_launch_kernel5();
+		cl_launch_kernel5(n);
 		
-		for (i1 = 0; i1 < N-2; i1++)
+		for (i1 = 0; i1 < _PB_N-2; i1++)
 		{
-			cl_launch_kernel6(i1);
+			cl_launch_kernel6(i1, n);
 		}
 	}	
 	
@@ -464,18 +485,18 @@ int main(void)
 		/* Start timer. */
 	  	polybench_start_instruments;
 
-		adi(POLYBENCH_ARRAY(A2), POLYBENCH_ARRAY(B2), POLYBENCH_ARRAY(X2));
+		adi(tsteps, n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(X));
 	
 		/* Stop and print timer. */
 		printf("CPU Time in seconds:\n");
 	  	polybench_stop_instruments;
 	 	polybench_print_instruments;
 
-		compareResults(POLYBENCH_ARRAY(B1), POLYBENCH_ARRAY(B2), POLYBENCH_ARRAY(X1), POLYBENCH_ARRAY(X2));
+		compareResults(n, POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu), POLYBENCH_ARRAY(X), POLYBENCH_ARRAY(X_outputFromGpu));
 
 	#else
 
-		print_array(N, POLYBENCH_ARRAY(X1));
+		print_array(n, POLYBENCH_ARRAY(X_outputFromGpu));
 
 	#endif //RUN_ON_CPU
 
