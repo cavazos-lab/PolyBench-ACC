@@ -370,7 +370,7 @@ void print_array(int ni, int nl,
 }
 
 
-int main(void) 
+int main(int argc, char *argv[])
 {
 	int ni = NI;
 	int nj = NJ;
@@ -415,9 +415,9 @@ int main(void)
 
 		compareResults(ni, nl, POLYBENCH_ARRAY(G), POLYBENCH_ARRAY(G_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(ni, nl, POLYBENCH_ARRAY(G_outputFromGpu));
+		polybench_prevent_dce(print_array(ni, nl, POLYBENCH_ARRAY(G_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

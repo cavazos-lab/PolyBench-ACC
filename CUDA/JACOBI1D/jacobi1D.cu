@@ -44,17 +44,17 @@ void init_array(int n, DATA_TYPE POLYBENCH_1D(A,N,n), DATA_TYPE POLYBENCH_1D(B,N
 void runJacobi1DCpu(int tsteps, int n, DATA_TYPE POLYBENCH_1D(A,N,n), DATA_TYPE POLYBENCH_1D(B,N,n))
 {
 	for (int t = 0; t < _PB_TSTEPS; t++)
-	{
-		for (int i = 1; i < _PB_N - 1; i++)
+    {
+		for (int i = 2; i < _PB_N - 1; i++)
 		{
 			B[i] = 0.33333 * (A[i-1] + A[i] + A[i + 1]);
 		}
 		
-		for (int j = 1; j < _PB_N - 1; j++)
+		for (int j = 2; j < _PB_N - 1; j++)
 		{
 			A[j] = B[j];
 		}
-	}
+    }
 }
 
 
@@ -62,9 +62,9 @@ __global__ void runJacobiCUDA_kernel1(int n, DATA_TYPE* A, DATA_TYPE* B)
 {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	if ((i > 0) && (i < (_PB_N-1)))
+	if ((i > 1) && (i < (_PB_N-1)))
 	{
-		B[i] = 0.33333 * (A[i-1] + A[i] + A[i + 1]);
+		B[i] = 0.33333f * (A[i-1] + A[i] + A[i + 1]);
 	}
 }
 
@@ -73,7 +73,7 @@ __global__ void runJacobiCUDA_kernel2(int n, DATA_TYPE* A, DATA_TYPE* B)
 {
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
 	
-	if ((j > 0) && (j < (_PB_N-1)))
+	if ((j > 1) && (j < (_PB_N-1)))
 	{
 		A[j] = B[j];
 	}
@@ -194,9 +194,9 @@ int main(int argc, char** argv)
 
 		compareResults(n, POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(a_outputFromGpu), POLYBENCH_ARRAY(b), POLYBENCH_ARRAY(b_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(n, POLYBENCH_ARRAY(a_outputFromGpu));
+		polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(a_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

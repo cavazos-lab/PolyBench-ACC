@@ -285,7 +285,7 @@ void print_array(int ni, int nj,
 }
 
 
-int main(void) 
+int main(int argc, char *argv[])
 {
 	/* Retrieve problem size. */
 	int ni = NI;
@@ -327,9 +327,9 @@ int main(void)
 
 		compareResults(ni, nj, POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(C_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(ni, nj, POLYBENCH_ARRAY(C_outputFromGpu));
+		polybench_prevent_dce(print_array(ni, nj, POLYBENCH_ARRAY(C_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

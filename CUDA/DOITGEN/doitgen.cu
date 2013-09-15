@@ -180,6 +180,29 @@ void doitgenCuda(int nr, int nq, int np,
 	cudaFree(C4Gpu);
 	cudaFree(sumGpu);
 }
+
+
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static
+void print_array(int nr, int nq, int np,
+		 DATA_TYPE POLYBENCH_3D(A,NR,NQ,NP,nr,nq,np))
+{
+	int i, j, k;
+
+	for (i = 0; i < nr; i++)
+	{
+		for (j = 0; j < nq; j++)
+		{
+			for (k = 0; k < np; k++) 
+			{
+				fprintf (stderr, DATA_PRINTF_MODIFIER, A[i][j][k]);
+				if (i % 20 == 0) fprintf (stderr, "\n");
+			}
+		}
+	}
+	fprintf (stderr, "\n");
+}
 	
 
 int main(int argc, char *argv[])
@@ -224,9 +247,9 @@ int main(int argc, char *argv[])
 	
 		compareResults(nr, nq, np, POLYBENCH_ARRAY(sum), POLYBENCH_ARRAY(sum_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(nr, nq, np, POLYBENCH_ARRAY(sum_outputFromGpu));
+		polybench_prevent_dce(print_array(nr, nq, np, POLYBENCH_ARRAY(sum_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

@@ -28,10 +28,6 @@
 //define the error threshold for the results "not matching"
 #define PERCENT_DIFF_ERROR_THRESHOLD 0.05
 
-/* Declared constant values for ALPHA and BETA (same as values in PolyBench 2.0) */
-#define ALPHA 32412.0f
-#define BETA 2123.0f
-
 #define RUN_ON_CPU
 
 
@@ -227,9 +223,9 @@ int main(int argc, char *argv[])
 	
 		compareResults(ni, nj, POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(C_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(ni, nj, POLYBENCH_ARRAY(C_outputFromGpu));
+		polybench_prevent_dce(print_array(ni, nj, POLYBENCH_ARRAY(C_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

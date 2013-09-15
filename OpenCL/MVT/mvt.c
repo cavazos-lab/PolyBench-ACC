@@ -297,7 +297,7 @@ void print_array(int n,
 
 
 
-int main(void) 
+int main(int argc, char *argv[])
 {
 	int n = N;
 
@@ -336,9 +336,9 @@ int main(void)
 
 		compareResults(n, POLYBENCH_ARRAY(x1), POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2), POLYBENCH_ARRAY(x2_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(n, POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2_outputFromGpu));
+		polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(x1_outputFromGpu), POLYBENCH_ARRAY(x2_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

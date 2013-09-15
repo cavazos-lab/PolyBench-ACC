@@ -293,7 +293,7 @@ void print_array(int nx, DATA_TYPE POLYBENCH_1D(y,NX,nx))
 }
 
 
-int main(void) 
+int main(int argc, char *argv[])
 {
 	int nx = NX;
 	int ny = NY;
@@ -330,9 +330,9 @@ int main(void)
 
 		compareResults(ny, POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(y_outputFromGpu));
 
-	#else
+	#else //prevent dead code elimination
 
-		print_array(ny, POLYBENCH_ARRAY(y_outputFromGpu));
+		polybench_prevent_dce(print_array(ny, POLYBENCH_ARRAY(y_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

@@ -297,9 +297,9 @@ int main(int argc, char *argv[])
 
 		compareResults(ni, nj, POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(ni, nj, POLYBENCH_ARRAY(B_outputFromGpu));
+		polybench_prevent_dce(print_array(ni, nj, POLYBENCH_ARRAY(B_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

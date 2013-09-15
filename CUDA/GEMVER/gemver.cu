@@ -28,7 +28,6 @@
 
 #define GPU_DEVICE 0
 
-
 #define RUN_ON_CPU
 
 
@@ -323,9 +322,9 @@ int main(int argc, char *argv[])
 		
 		compareResults(n, POLYBENCH_ARRAY(w), POLYBENCH_ARRAY(w_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(n, POLYBENCH_ARRAY(w_outputFromGpu));
+		polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(w_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

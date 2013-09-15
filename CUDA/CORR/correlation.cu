@@ -298,7 +298,7 @@ void print_array(int m,
 }
 
 
-int main()
+int main(int argc, char** argv)
 {
 	int m = M;
 	int n = N;
@@ -330,9 +330,9 @@ int main()
     
 		compareResults(m, n, POLYBENCH_ARRAY(symmat), POLYBENCH_ARRAY(symmat_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(m, POLYBENCH_ARRAY(symmat_outputFromGpu));
+		polybench_prevent_dce(print_array(m, POLYBENCH_ARRAY(symmat_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

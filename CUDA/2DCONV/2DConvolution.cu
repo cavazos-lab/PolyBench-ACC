@@ -87,6 +87,7 @@ void compareResults(int ni, int nj, DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), D
 	
 	// Print results
 	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
+	
 }
 
 
@@ -198,9 +199,9 @@ int main(int argc, char *argv[])
 	
 		compareResults(ni, nj, POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(ni, nj, POLYBENCH_ARRAY(B_outputFromGpu));
+		polybench_prevent_dce(print_array(ni, nj, POLYBENCH_ARRAY(B_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

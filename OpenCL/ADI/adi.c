@@ -44,7 +44,6 @@
 
 char str_temp[1024];
 
-
 cl_platform_id platform_id;
 cl_device_id device_id;   
 cl_uint num_devices;
@@ -427,7 +426,7 @@ void print_array(int n,
 }
 
 
-int main(void) 
+int main(int argc, char *argv[])
 {
 	int tsteps = TSTEPS;
 	int n = N;
@@ -495,9 +494,9 @@ int main(void)
 
 		compareResults(n, POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(B_outputFromGpu), POLYBENCH_ARRAY(X), POLYBENCH_ARRAY(X_outputFromGpu));
 
-	#else
+	#else //prevent dead code elimination
 
-		print_array(n, POLYBENCH_ARRAY(X_outputFromGpu));
+		polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(X_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

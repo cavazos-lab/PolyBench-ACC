@@ -225,9 +225,9 @@ int main(int argc, char** argv)
 
 		compareResults(ny, POLYBENCH_ARRAY(y), POLYBENCH_ARRAY(y_outputFromGpu));
 
-	#else
+	#else //prevent dead code elimination
 
-		print_array(ny, POLYBENCH_ARRAY(y_outputFromGpu));
+		polybench_prevent_dce(print_array(ny, POLYBENCH_ARRAY(y_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

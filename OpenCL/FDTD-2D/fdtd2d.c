@@ -42,9 +42,6 @@
 
 char str_temp[1024];
 
-DATA_TYPE alpha = 23;
-DATA_TYPE beta = 15;
-
 cl_platform_id platform_id;
 cl_device_id device_id;   
 cl_uint num_devices;
@@ -341,7 +338,7 @@ void print_array(int nx,
 }
 
 
-int main(void) 
+int main(int argc, char *argv[])
 {
 	int tmax = TMAX;
 	int nx = NX;
@@ -379,9 +376,9 @@ int main(void)
 
 		compareResults(nx, ny, POLYBENCH_ARRAY(hz), POLYBENCH_ARRAY(hz_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(nx, ny, POLYBENCH_ARRAY(hz_outputFromGpu));
+		polybench_prevent_dce(print_array(nx, ny, POLYBENCH_ARRAY(hz_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

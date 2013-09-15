@@ -1,2 +1,4 @@
-all:
-	nvcc -O3 doitgen.cu -o doitgen.exe
+EXECUTABLE := doitgen.exe
+CUFILES := doitgen.cu
+
+include ../common.mk

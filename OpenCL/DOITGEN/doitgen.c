@@ -182,7 +182,9 @@ void cl_initialization()
 	if(errcode != CL_SUCCESS) printf("Error in creating command queue\n");
 }
 
-void cl_mem_init(DATA_TYPE *A, DATA_TYPE *C4, DATA_TYPE* sum)
+void cl_mem_init(DATA_TYPE POLYBENCH_3D(A,NR,NQ,NP,nr,nq,np),
+		    DATA_TYPE POLYBENCH_2D(C4,NP,NP,np,np),
+		    DATA_TYPE POLYBENCH_3D(sum,NR,NQ,NP,nr,nq,np))
 {
 	a_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, NR * NQ * NP * sizeof(DATA_TYPE), NULL, &errcode);
 	if(errcode != CL_SUCCESS) printf("Error in creating buffers\n");
@@ -285,7 +287,30 @@ void cl_clean_up()
 }
 
 
-int main(void) 
+/* DCE code. Must scan the entire live-out data.
+   Can be used also to check the correctness of the output. */
+static
+void print_array(int nr, int nq, int np,
+		 DATA_TYPE POLYBENCH_3D(A,NR,NQ,NP,nr,nq,np))
+{
+	int i, j, k;
+
+	for (i = 0; i < nr; i++)
+	{
+		for (j = 0; j < nq; j++)
+		{
+			for (k = 0; k < np; k++) 
+			{
+				fprintf (stderr, DATA_PRINTF_MODIFIER, A[i][j][k]);
+				if (i % 20 == 0) fprintf (stderr, "\n");
+			}
+		}
+	}
+	fprintf (stderr, "\n");
+}
+
+
+int main(int argc, char *argv[])
 {
 	/* Retrieve problem size. */
 	int nr = NR;
@@ -305,7 +330,7 @@ int main(void)
 
 	read_cl_file();
 	cl_initialization();
-	cl_mem_init(A, C4, sum);
+	cl_mem_init(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(C4), POLYBENCH_ARRAY(sum));
 	cl_load_prog();
 
 	/* Start timer. */
@@ -345,9 +370,9 @@ int main(void)
 	
 		compareResults(nr, nq, np, POLYBENCH_ARRAY(sum), POLYBENCH_ARRAY(sum_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(nr, nq, np, POLYBENCH_ARRAY(sum_outputFromGpu));
+		polybench_prevent_dce(print_array(nr, nq, np, POLYBENCH_ARRAY(sum_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 

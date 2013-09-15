@@ -26,10 +26,6 @@
 //define the error threshold for the results "not matching"
 #define PERCENT_DIFF_ERROR_THRESHOLD 0.05
 
-/* Problem size. */
-#define TSTEPS 20
-#define N 1000
-
 #define RUN_ON_CPU
 
 
@@ -211,9 +207,9 @@ int main(int argc, char** argv)
 	
 		compareResults(n, POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(a_outputFromGpu), POLYBENCH_ARRAY(b), POLYBENCH_ARRAY(b_outputFromGpu));
 
-	#else //print output to stderr so no dead code elimination
+	#else //prevent dead code elimination
 
-		print_array(n, POLYBENCH_ARRAY(a_outputFromGpu));
+		polybench_prevent_dce(print_array(n, POLYBENCH_ARRAY(a_outputFromGpu)));
 
 	#endif //RUN_ON_CPU
 
