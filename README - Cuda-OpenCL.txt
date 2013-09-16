@@ -84,6 +84,11 @@ within the codes and .h files.  After modifying, run "make clean" then "make" on
 
 NOTES ABOUT PARAMETERS:
 
+Input Size:
+By default the STANDARD_DATASET as defined in the .cuh/.h file is used as the input size.  The dataset choice can be adjusted from STANDARD_DATASET to other
+options (MINI_DATASET, SMALL_DATASET, etc) in the .cuh/.h file, the dataset size can be adjusted by defining the input size manually in the .cuh/.h file, or
+the input size can be changed by simply adjusting the STANDARD_DATASET so the program has different input dimensions.
+
 RUN_ON_CPU (in .cu/.c files):
 Declares if the kernel will be run on the accelerator and CPU (with the run-time for each given and the outputs compared) or only on the accelerator.  By
 default, RUN_ON_CPU is defined so the kernel is run on both the accelerator and the CPU to make it easy to compare accelerator/CPU outputs and run-times.
