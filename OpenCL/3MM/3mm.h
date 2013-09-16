@@ -17,22 +17,22 @@
 # endif
 
 /* Do not define anything if the user manually defines the size. */
-# if !defined(N)
+# if !defined(NI) && !defined(NJ) && !defined(NK) && !defined(NL) && !defined(NM)
 /* Define the possible dataset sizes. */
 #  ifdef MINI_DATASET
-# define NI 512
-# define NJ 512
-# define NK 512
-# define NL 512
-# define NM 512
+# define NI 128
+# define NJ 128
+# define NK 128
+# define NL 128
+# define NM 128
 #  endif
 
 #  ifdef SMALL_DATASET
-# define NI 512
-# define NJ 512
-# define NK 512
-# define NL 512
-# define NM 512
+# define NI 256
+# define NJ 256
+# define NK 256
+# define NL 256
+# define NM 256
 #  endif
 
 #  ifdef STANDARD_DATASET /* Default if unspecified. */
@@ -44,19 +44,19 @@
 #  endif
 
 #  ifdef LARGE_DATASET
-# define NI 512
-# define NJ 512
-# define NK 512
-# define NL 512
-# define NM 512
+# define NI 1024
+# define NJ 1024
+# define NK 1024
+# define NL 1024
+# define NM 1024
 #  endif
 
 #  ifdef EXTRALARGE_DATASET
-# define NI 512
-# define NJ 512
-# define NK 512
-# define NL 512
-# define NM 512
+# define NI 2048
+# define NJ 2048
+# define NK 2048
+# define NL 2048
+# define NM 2048
 #  endif
 # endif /* !N */
 

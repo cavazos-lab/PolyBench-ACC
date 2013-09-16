@@ -20,11 +20,11 @@
 # if !defined(N)
 /* Define the possible dataset sizes. */
 #  ifdef MINI_DATASET
-#define N 2048
+#define N 512
 #  endif
 
 #  ifdef SMALL_DATASET
-#define N 2048
+#define N 1024
 #  endif
 
 #  ifdef STANDARD_DATASET /* Default if unspecified. */
@@ -32,11 +32,11 @@
 #  endif
 
 #  ifdef LARGE_DATASET
-#define N 2048
+#define N 4096
 #  endif
 
 #  ifdef EXTRALARGE_DATASET
-#define N 2048
+#define N 8192
 #  endif
 # endif /* !N */
 

@@ -17,18 +17,18 @@
 # endif
 
 /* Do not define anything if the user manually defines the size. */
-# if !defined(N)
+# if !defined(TMAX) && !defined(NX) && !defined(NY)
 /* Define the possible dataset sizes. */
 #  ifdef MINI_DATASET
 #define TMAX 500
-#define NX 2048
-#define NY 2048
+#define NX 512
+#define NY 512
 #  endif
 
 #  ifdef SMALL_DATASET
 #define TMAX 500
-#define NX 2048
-#define NY 2048
+#define NX 1024
+#define NY 1024
 #  endif
 
 #  ifdef STANDARD_DATASET /* Default if unspecified. */
@@ -39,14 +39,14 @@
 
 #  ifdef LARGE_DATASET
 #define TMAX 500
-#define NX 2048
-#define NY 2048
+#define NX 4096
+#define NY 4096
 #  endif
 
 #  ifdef EXTRALARGE_DATASET
 #define TMAX 500
-#define NX 2048
-#define NY 2048
+#define NX 8192
+#define NY 8192
 #  endif
 # endif /* !N */
 
