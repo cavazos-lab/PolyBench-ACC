@@ -29,35 +29,37 @@ Paper available at http://www.eecis.udel.edu/~grauerg/
 * Available benchmarks in CUDA/OpenCL:
 --------------------------------------
 
-Convolution:
-2DCONV
-3DCONV
+medley/:
+convolution-2d
+convolution-3d
 
-Linear Algebra:
-2MM
-3MM
-ATAX
-BICG
-DOITGEN
-GEMM
-GESUMMV
-GRAMSCHMIDT
-LU
-MVT
-SYR2K
-SYRK
+linear-algebra/kernels/:
+2mm
+3mm
+atax
+bicg
+doitgen
+gemm
+gesummv
+mvt
+syr2k
+syrk
 
-Datamining:
-CORRELATION
-COVARIANCE
+linear-algebra/solvers/:
+gramschmidt
+lu
 
-Stencils:
-ADI
-FDTD-2D
-JACOBI-1D
-JACOBI-2D
+datamining/:
+correlation
+covariance
 
-All the codes (CUDA, OpenCL, HMPP, and OpenACC) are based on PolyBench 3.2.
+stencils/:
+adi
+fdtd-2d
+jacobi-1d-imper
+jacobi-2d-imper
+
+All the codes are based on PolyBench 3.2.
 
 --------------------------------------------------------------------------------------------
 * Instructions - to compile/run CUDA and OpenCL
@@ -70,7 +72,7 @@ CUDA:
 
 OpenCL:
 1. Set up PATH and LD_LIBRARY_PATH environment variables to point to OpenCL installation
-2. Set location of SDK in common.mk file in OpenCL folder
+2. Set location of SDK in common.mk file in utilities folder (in OpenCL directory)
 3. Run "make" in target folder(s) to generate executable(s)
 4. Run the generated .exe file(s).
 
