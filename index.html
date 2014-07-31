@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Polybench/GPU : The Polyhedral Benchmark Suite Targeting Accelerators" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Polybench/GPU</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/cavazos-lab/PolybenchGPU">View on GitHub</a>
+
+          <h1 id="project_title">Polybench/GPU</h1>
+          <h2 id="project_tagline">The Polyhedral Benchmark Suite Targeting Accelerators</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/cavazos-lab/PolybenchGPU/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/cavazos-lab/PolybenchGPU/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h3>Introduction</h3>
+
+<p>PolyBench is a collection of benchmarks containing static control parts. The purpose is to uniformize the execution and monitoring of kernels, typically used in past and current publications. PolyBench features include:</p>
+
+<ul>
+<li>A single file, tunable at compile-time, used for the kernel instrumentation. It performs extra operations such as cache flushing before the kernel execution, and can set real-time scheduling to prevent OS interference.</li>
+<li>Non-null data initialization, and live-out data dump.</li>
+<li>Syntactic constructs to prevent any dead code elimination on the kernel.</li>
+<li>Parametric loop bounds in the kernels, for general-purpose implementation.</li>
+<li>Clear kernel marking, using <code>#pragma scop</code> and <code>#pragma endscop</code> delimiters.</li>
+</ul><p>The latest up-to-date version of Polybench/C is maintained by Louis-Noel Pouchet <a href="mailto:pouchet@cse.ohio-state.edu">pouchet@cse.ohio-state.edu</a>.</p>
+
+<p>Polybench site: <a href="http://www.cse.ohio-state.edu/%7Epouchet/software/polybench/">http://www.cse.ohio-state.edu/~pouchet/software/polybench/</a></p>
+
+<h3>Modifications to Polybench</h3>
+
+<p>We extended the initial CPU benchmarks to include the following target languages:</p>
+
+<ul>
+<li>CUDA</li>
+<li>OpenCL</li>
+<li>HMPP</li>
+<li>OpenACC</li>
+<li>OpenMP</li>
+</ul><h3>Benchmarks Included</h3>
+
+<table>
+<tr>
+<th>Benchmark</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>2mm</td>
+<td>2 Matrix Multiplications (D=A.B; E=C.D)</td>
+</tr>
+<tr>
+<td>3mm</td>
+<td>3 Matrix Multiplications (E=A.B; F=C.D; G=E.F)</td>
+</tr>
+<tr>
+<td>adi</td>
+<td>Alternating Direction Implicit solver</td>
+</tr>
+<tr>
+<td>atax</td>
+<td>Matrix Transpose and Vector Multiplication</td>
+</tr>
+<tr>
+<td>bicg</td>
+<td>BiCG Sub Kernel of BiCGStab Linear Solver</td>
+</tr>
+<tr>
+<td>cholesky</td>
+<td>Cholesky Decomposition</td>
+</tr>
+<tr>
+<td>correlation</td>
+<td>Correlation Computation</td>
+</tr>
+<tr>
+<td>covariance</td>
+<td>Covariance Computation</td>
+</tr>
+<tr>
+<td>doitgen</td>
+<td>Multiresolution analysis kernel (MADNESS)</td>
+</tr>
+<tr>
+<td>durbin</td>
+<td>Toeplitz system solver</td>
+</tr>
+<tr>
+<td>dynprog</td>
+<td>Dynamic programming (2D)</td>
+</tr>
+<tr>
+<td>fdtd-2d</td>
+<td>2-D Finite Different Time Domain Kernel</td>
+</tr>
+<tr>
+<td>fdtd-apml</td>
+<td>FDTD using Anisotropic Perfectly Matched Layer</td>
+</tr>
+<tr>
+<td>gauss-filter</td>
+<td>Gaussian Filter</td>
+</tr>
+<tr>
+<td>gemm</td>
+<td>Matrix-multiply C=alpha.A.B+beta.C</td>
+</tr>
+<tr>
+<td>gemver</td>
+<td>Vector Multiplication and Matrix Addition</td>
+</tr>
+<tr>
+<td>gesummv</td>
+<td>Scalar, Vector and Matrix Multiplication</td>
+</tr>
+<tr>
+<td>gramschmidt</td>
+<td>Gram-Schmidt decomposition</td>
+</tr>
+<tr>
+<td>jacobi-1D</td>
+<td>1-D Jacobi stencil computation</td>
+</tr>
+<tr>
+<td>jacobi-2D</td>
+<td>2-D Jacobi stencil computation</td>
+</tr>
+<tr>
+<td>lu</td>
+<td>LU decomposition</td>
+</tr>
+<tr>
+<td>ludcmp</td>
+<td>LU decomposition</td>
+</tr>
+<tr>
+<td>mvt</td>
+<td>Matrix Vector Product and Transpose</td>
+</tr>
+<tr>
+<td>reg-detect</td>
+<td>2-D Image processing</td>
+</tr>
+<tr>
+<td>seidel</td>
+<td>2-D Seidel stencil computation</td>
+</tr>
+<tr>
+<td>symm</td>
+<td>Symmetric matrix-multiply</td>
+</tr>
+<tr>
+<td>syr2k</td>
+<td>Symmetric rank-2k operations</td>
+</tr>
+<tr>
+<td>syrk</td>
+<td>Symmetric rank-k operations</td>
+</tr>
+<tr>
+<td>trisolv</td>
+<td>Triangular solver</td>
+</tr>
+<tr>
+<td>trmm</td>
+<td>Triangular matrix-multiply</td>
+</tr>
+</table><h3>Project Updates</h3>
+
+<p>All updates will be committed to the github repository accessible at the top of this page</p>
+
+<h3>Project Members</h3>
+
+<ul>
+<li>Scott Grauer-Gray (<a href="https://github.com/sgrauerg" class="user-mention">@sgrauerg</a>)</li>
+<li>Robert Searles (<a href="https://github.com/rsearles35" class="user-mention">@rsearles35</a>)</li>
+<li>William Killian (<a href="https://github.com/willkill07" class="user-mention">@willkill07</a>)</li>
+<li>John Cavazos (<a href="https://github.com/cavazos" class="user-mention">@cavazos</a>)</li>
+</ul>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Polybench/GPU maintained by <a href="https://github.com/cavazos-lab">cavazos-lab</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
