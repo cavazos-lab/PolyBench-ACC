@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <title>Polybench/GPU</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+  <div id="header" class="center">
+    <div class="maxwidth">
+      <div class="widthfix" id="headerimg">
+      </div>
+    </div>
+  </div>
+  <div class="center">
+    <div class="maxwidth">
+      <div id="pagecontent" class="widthfix">
+        <h1>Polybench/GPU</h1>
+        <p>The Polyhedral Benchmark Suite Targeting Accelerators</p>
+        <p>PolyBench is a collection of benchmarks containing static control parts. The purpose is to uniformize the execution and monitoring of kernels, typically used in past and current publications. PolyBench features include:</p>
+        <ul>
+          <li>A single file, tunable at compile-time, used for the kernel instrumentation. It performs extra operations such as cache flushing before the kernel execution, and can set real-time scheduling to prevent OS interference.</li>
+          <li>Non-null data initialization, and live-out data dump.</li>
+          <li>Syntactic constructs to prevent any dead code elimination on the kernel.</li>
+          <li>Parametric loop bounds in the kernels, for general-purpose implementation.</li>
+          <li>Clear kernel marking, using #pragma scop and #pragma endscop delimiters.</li>
+        </ul>
+        <h3>Get The Code</h3>
+        <p>All of the source code is available on GitHub. We have a few options available for download.</p>
+        <p><a href="https://github.com/cavazos-lab/PolybenchGPU">GitHub Repository</a></p>
+        <p><a href="https://github.com/cavazos-lab/PolybenchGPU/tarball/master">Compressed Tarball</a></p>
+        <p><a href="https://github.com/cavazos-lab/PolybenchGPU/tarball/master">ZIP File</a></p>
+        <h2>Benchmarks</h2>
+        <ul>
+          <li><strong>2mm</strong> --  2 Matrix Multiplications (D=A.B; E=C.D)</li>
+          <li><strong>3mm</strong> -- 3 Matrix Multiplications (E=A.B; F=C.D; G=E.F)</li>
+          <li><strong>adi</strong> -- Alternating Direction Implicit solver</li>
+          <li><strong>atax</strong> --  Matrix Transpose and Vector Multiplication</li>
+          <li><strong>bicg</strong> --  BiCG Sub Kernel of BiCGStab Linear Solver</li>
+          <li><strong>cholesky</strong> --  Cholesky Decomposition</li>
+          <li><strong>correlation</strong> -- Correlation Computation</li>
+          <li><strong>covariance</strong> --  Covariance Computation</li>
+          <li><strong>doitgen</strong> -- Multiresolution analysis kernel (MADNESS)</li>
+          <li><strong>durbin</strong> --  Toeplitz system solver</li>
+          <li><strong>dynprog</strong> -- Dynamic programming (2D)</li>
+          <li><strong>fdtd-2d</strong> -- 2-D Finite Different Time Domain Kernel</li>
+          <li><strong>fdtd-apml</strong> -- FDTD using Anisotropic Perfectly Matched Layer</li>
+          <li><strong>gauss-filter</strong> --  Gaussian Filter</li>
+          <li><strong>gemm</strong> --  Matrix-multiply C=alpha.A.B+beta.C</li>
+          <li><strong>gemver</strong> --  Vector Multiplication and Matrix Addition</li>
+          <li><strong>gesummv</strong> -- Scalar, Vector and Matrix Multiplication</li>
+          <li><strong>gramschmidt</strong> -- Gram-Schmidt decomposition</li>
+          <li><strong>jacobi-1D</strong> -- 1-D Jacobi stencil computation</li>
+          <li><strong>jacobi-2D</strong> -- 2-D Jacobi stencil computation</li>
+          <li><strong>lu</strong> --  LU decomposition</li>
+          <li><strong>ludcmp</strong> --  LU decomposition</li>
+          <li><strong>mvt</strong> -- Matrix Vector Product and Transpose</li>
+          <li><strong>reg-detect</strong> --  2-D Image processing</li>
+          <li><strong>seidel</strong> --  2-D Seidel stencil computation</li>
+          <li><strong>symm</strong> --  Symmetric matrix-multiply</li>
+          <li><strong>syr2k</strong> -- Symmetric rank-2k operations</li>
+          <li><strong>syrk</strong> --  Symmetric rank-k operations</li>
+          <li><strong>trisolv</strong> -- Triangular solver</li>
+          <li><strong>trmm</strong> --  Triangular matrix-multiply</li>
+        </ul>
+        <h2>Target Languages</h2>
+        <ul>
+          <li>CUDA</li>
+          <li>OpenCL</li>
+          <li>HMPP</li>
+          <li>OpenACC</li>
+          <li>OpenMP</li>
+        </ul>
+        <h2>Related Research</h2>
+
+        <p>S. Grauer-Gray, L. Xu, R. Searles, S. Ayalasomayajula, J. Cavazos. Auto-tuning a High-Level Language Targeted to GPU Codes. In  Proceedings of Innovative Parallel Computing (InPar) 2012.</p>
+        <p>This paper and the corresponding presentation are available for download.</p>
+        <p><a href="Autotuning.a.High-Level.Language.Targeted.to.GPU.Codes-paper.pdf">Download Paper</a></p>
+        <p><a href="Autotuning.a.High-Level.Language.Targeted.to.GPU.Codes-presentation.pdf">Download Presentation</a></p>
+        <h3>Contributors</h3>
+        <ul>
+          <li><a href="https://www.eecis.udel.edu/~cavazos">John Cavazos</a>, Principle Investigator</li>
+          <li><a href="https://www.eecis.udel.edu/~grauerg">Scott Grauer-Gray</a></li>
+          <li><a href="https://www.eecis.udel.edu/~searles">Robert Searles</a></li>
+          <li><a href="https://www.eecis.udel.edu/~wkillian">William Killian</a></li>
+          <li><a href="https://www.eecis.udel.edu/~lxu">Lifan Xu</a></li>
+          <li>Sudhee Ayalasomayajula</a></li>
+        </ul>
+        <h4 id="acknowledgements">Acknowledgements</h4>
+        <p>This work was funded in part by the U.S. National Science Foundation through the NSF Career award 0953667 and the Defense Advanced Research Projects Agency through the DARPA Computer Science Study Group (CSSG).</p>
+        <p>&copy; 2012-2014 University of Delaware</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
