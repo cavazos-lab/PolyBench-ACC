@@ -19,7 +19,7 @@
       <div id="pagecontent" class="widthfix">
         <h1>Polybench/GPU</h1>
         <p>The Polyhedral Benchmark Suite Targeting Accelerators</p>
-        <p>PolyBench is a collection of benchmarks containing static control parts. The purpose is to uniformize the execution and monitoring of kernels, typically used in past and current publications. PolyBench features include:</p>
+        <p><a href="http://www.cs.ucla.edu/~pouchet/software/polybench/">PolyBench</a> is a collection of benchmarks containing static control parts. The purpose is to uniformize the execution and monitoring of kernels, typically used in past and current publications. PolyBench features include:</p>
         <ul>
           <li>A single file, tunable at compile-time, used for the kernel instrumentation. It performs extra operations such as cache flushing before the kernel execution, and can set real-time scheduling to prevent OS interference.</li>
           <li>Non-null data initialization, and live-out data dump.</li>
@@ -27,6 +27,7 @@
           <li>Parametric loop bounds in the kernels, for general-purpose implementation.</li>
           <li>Clear kernel marking, using <code>#pragma scop</code> and <code>#pragma endscop</code> delimiters.</li>
         </ul>
+	<p>We have modified the original Polybench Suite created by <a href="https://www.cs.ucla.edu/~pouchet/">Louis-Noël Pouchet</a> to run on GPUs and accelerators by using different programming languages.
         <h3>Get The Code</h3>
         <p>All of the source code is available on GitHub. We have a few options available for download.</p>
         <p><a href="https://github.com/cavazos-lab/PolybenchGPU">GitHub Repository</a></p>
