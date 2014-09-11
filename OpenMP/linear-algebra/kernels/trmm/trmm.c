@@ -65,7 +65,7 @@ void kernel_trmm(int ni,
 {
   int i, j, k;
   #pragma scop
-  #pragma acc parallel
+  #pragma omp parallel
   {
     /*  B := alpha*A'*B, A triangular */
     #pragma omp for private (j, k)
