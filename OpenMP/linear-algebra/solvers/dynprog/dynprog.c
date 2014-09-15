@@ -59,27 +59,30 @@ void kernel_dynprog(int tsteps, int length,
   DATA_TYPE out_l = 0;
   
   #pragma scop
-    #pragma omp parallel
+  #pragma omp parallel
+  {
+    #pragma omp master
     {
       for (iter = 0; iter < _PB_TSTEPS; iter++)
-	{
-          #pragma omp for private (j)
-	  for (i = 0; i <= _PB_LENGTH - 1; i++)
-	    for (j = 0; j <= _PB_LENGTH - 1; j++)
-	      c[i][j] = 0;
-          #pragma omp for private (j, k)
-	  for (i = 0; i <= _PB_LENGTH - 2; i++)
-	    {
-              for (j = i + 1; j <= _PB_LENGTH - 1; j++)
-		{
-		  sum_c[i][j][i] = 0;
-		  for (k = i + 1; k <= j-1; k++)
-		    sum_c[i][j][k] = sum_c[i][j][k - 1] + c[i][k] + c[k][j];
-		  c[i][j] = sum_c[i][j][j-1] + W[i][j];
-		}
-	    }
-	  out_l += c[0][_PB_LENGTH - 1];
-	}
+      {
+        #pragma omp for private (j)
+        for (i = 0; i <= _PB_LENGTH - 1; i++)
+          for (j = 0; j <= _PB_LENGTH - 1; j++)
+            c[i][j] = 0;
+        #pragma omp for private (j, k)
+        for (i = 0; i <= _PB_LENGTH - 2; i++)
+        {
+          for (j = i + 1; j <= _PB_LENGTH - 1; j++)
+          {
+            sum_c[i][j][i] = 0;
+            for (k = i + 1; k <= j-1; k++)
+              sum_c[i][j][k] = sum_c[i][j][k - 1] + c[i][k] + c[k][j];
+            c[i][j] = sum_c[i][j][j-1] + W[i][j];
+          }
+        }
+        out_l += c[0][_PB_LENGTH - 1];
+      }
+    }
   }
   #pragma endscop
   *out = out_l;

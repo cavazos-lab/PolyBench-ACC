@@ -79,27 +79,33 @@ void kernel_fdtd_2d(int tmax,
 {
   int t, i, j;
   #pragma scop
-  #pragma omp parallel
+  #pragma omp parallel private (t,i,j)
   {
-    for (t = 0; t < _PB_TMAX; t++)
+    #pragma omp master
+    {
+      for (t = 0; t < _PB_TMAX; t++)
       {
         #pragma omp for
-	for (j = 0; j < _PB_NY; j++)
-	  ey[0][j] = _fict_[t];
-        #pragma omp for private (j)
-	for (i = 1; i < _PB_NX; i++)
-	  for (j = 0; j < _PB_NY; j++)
-	    ey[i][j] = ey[i][j] - 0.5*(hz[i][j]-hz[i-1][j]);
-        #pragma omp for private (j)
-	for (i = 0; i < _PB_NX; i++)
-	  for (j = 1; j < _PB_NY; j++)
-	    ex[i][j] = ex[i][j] - 0.5*(hz[i][j]-hz[i][j-1]);
-        #pragma omp for private (j)
-	for (i = 0; i < _PB_NX - 1; i++)
-	  for (j = 0; j < _PB_NY - 1; j++)
-	    hz[i][j] = hz[i][j] - 0.7*  (ex[i][j+1] - ex[i][j] +
-					 ey[i+1][j] - ey[i][j]);
+        for (j = 0; j < _PB_NY; j++)
+          ey[0][j] = _fict_[t];
+        #pragma omp barrier
+        #pragma omp for collapse(2) schedule(static)
+        for (i = 1; i < _PB_NX; i++)
+          for (j = 0; j < _PB_NY; j++)
+            ey[i][j] = ey[i][j] - 0.5*(hz[i][j]-hz[i-1][j]);
+        #pragma omp barrier
+        #pragma omp for collapse(2) schedule(static)
+        for (i = 0; i < _PB_NX; i++)
+          for (j = 1; j < _PB_NY; j++)
+            ex[i][j] = ex[i][j] - 0.5*(hz[i][j]-hz[i][j-1]);
+        #pragma omp barrier
+        #pragma omp for collapse(2) schedule(static)
+        for (i = 0; i < _PB_NX - 1; i++)
+          for (j = 0; j < _PB_NY - 1; j++)
+            hz[i][j] = hz[i][j] - 0.7*  (ex[i][j+1] - ex[i][j] + ey[i+1][j] - ey[i][j]);
+        #pragma omp barrier
       }
+    }
   }
   #pragma endscop
 }

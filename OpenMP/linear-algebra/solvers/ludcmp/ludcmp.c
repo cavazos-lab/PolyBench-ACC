@@ -77,40 +77,41 @@ void kernel_ludcmp(int n,
   {
     #pragma omp for private (j, k, w)
     for (i = 0; i < _PB_N; i++)
-      {
-	for (j = i+1; j <= _PB_N; j++)
-	  {
-	    w = A[j][i];
-	    for (k = 0; k < i; k++)
-	      w = w- A[j][k] * A[k][i];
-	    A[j][i] = w / A[i][i];
-	  }
-	for (j = i+1; j <= _PB_N; j++)
-	  {
-	    w = A[i+1][j];
-	    for (k = 0; k <= i; k++)
-	      w = w  - A[i+1][k] * A[k][j];
-	    A[i+1][j] = w;
-	  }
+    {
+      for (j = i+1; j <= _PB_N; j++)
+	    {
+        w = A[j][i];
+        for (k = 0; k < i; k++)
+          w = w- A[j][k] * A[k][i];
+	      A[j][i] = w / A[i][i];
       }
+      #pragma omp barrier
+      for (j = i+1; j <= _PB_N; j++)
+	    {
+	      w = A[i+1][j];
+	      for (k = 0; k <= i; k++)
+	        w = w  - A[i+1][k] * A[k][j];
+	      A[i+1][j] = w;
+	    }
+    }
     y[0] = b[0];
     #pragma omp for private (j, w)
     for (i = 1; i <= _PB_N; i++)
-      {
-	w = b[i];
-	for (j = 0; j < i; j++)
-	  w = w - A[i][j] * y[j];
-	y[i] = w;
-      }
+    {
+      w = b[i];
+      for (j = 0; j < i; j++)
+        w = w - A[i][j] * y[j];
+      y[i] = w;
+    }
     x[_PB_N] = y[_PB_N] / A[_PB_N][_PB_N];
     #pragma omp for private (j, w)
     for (i = 0; i <= _PB_N - 1; i++)
-      {
-	w = y[_PB_N - 1 - (i)];
-	for (j = _PB_N - i; j <= _PB_N; j++)
-	  w = w - A[_PB_N - 1 - i][j] * x[j];
-	x[_PB_N - 1 - i] = w / A[_PB_N - 1 - (i)][_PB_N - 1-(i)];
-      }
+    {
+      w = y[_PB_N - 1 - (i)];
+      for (j = _PB_N - i; j <= _PB_N; j++)
+        w = w - A[_PB_N - 1 - i][j] * x[j];
+      x[_PB_N - 1 - i] = w / A[_PB_N - 1 - (i)][_PB_N - 1-(i)];
+    }
   }
   #pragma endscop
 }

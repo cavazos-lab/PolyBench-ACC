@@ -80,16 +80,16 @@ void kernel_durbin(int n,
   {
     #pragma omp for private (i)
     for (k = 1; k < _PB_N; k++)
-      {
-	beta[k] = beta[k-1] - alpha[k-1] * alpha[k-1] * beta[k-1];
-	sum[0][k] = r[k];
-	for (i = 0; i <= k - 1; i++)
-	  sum[i+1][k] = sum[i][k] + r[k-i-1] * y[i][k-1];
-	alpha[k] = -sum[k][k] * beta[k];
-	for (i = 0; i <= k-1; i++)
-	  y[i][k] = y[i][k-1] + alpha[k] * y[k-i-1][k-1];
-	y[k][k] = alpha[k];
-      }
+    {
+      beta[k] = beta[k-1] - alpha[k-1] * alpha[k-1] * beta[k-1];
+      sum[0][k] = r[k];
+      for (i = 0; i <= k - 1; i++)
+        sum[i+1][k] = sum[i][k] + r[k-i-1] * y[i][k-1];
+      alpha[k] = -sum[k][k] * beta[k];
+      for (i = 0; i <= k-1; i++)
+        y[i][k] = y[i][k-1] + alpha[k] * y[k-i-1][k-1];
+      y[k][k] = alpha[k];
+    }
     #pragma omp for
     for (i = 0; i < _PB_N; i++)
       out[i] = y[i][_PB_N-1];

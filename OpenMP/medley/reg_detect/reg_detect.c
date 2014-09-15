@@ -71,32 +71,35 @@ void kernel_reg_detect(int niter, int maxgrid, int length,
   #pragma scop
   #pragma omp parallel
   {
-    for (t = 0; t < _PB_NITER; t++)
+    #pragma omp master
+    {
+      for (t = 0; t < _PB_NITER; t++)
       {
-        #pragma omp for private (i, cnt)
+        #pragma omp for private (i, cnt) collapse(2) schedule(static)
         for (j = 0; j <= _PB_MAXGRID - 1; j++)
-	  for (i = j; i <= _PB_MAXGRID - 1; i++)
-	    for (cnt = 0; cnt <= _PB_LENGTH - 1; cnt++)
-	      diff[j][i][cnt] = sum_tang[j][i];
-	#pragma omp for private (i, cnt)
-	for (j = 0; j <= _PB_MAXGRID - 1; j++)
-	  {
-            for (i = j; i <= _PB_MAXGRID - 1; i++)
-	      {
-                sum_diff[j][i][0] = diff[j][i][0];
-		for (cnt = 1; cnt <= _PB_LENGTH - 1; cnt++)
-		  sum_diff[j][i][cnt] = sum_diff[j][i][cnt - 1] + diff[j][i][cnt];
-		mean[j][i] = sum_diff[j][i][_PB_LENGTH - 1];
-	      }
-          }
+          for (i = j; i <= _PB_MAXGRID - 1; i++)
+            for (cnt = 0; cnt <= _PB_LENGTH - 1; cnt++)
+              diff[j][i][cnt] = sum_tang[j][i];
+        #pragma omp for private (i, cnt) collapse(2) schedule(static)
+        for (j = 0; j <= _PB_MAXGRID - 1; j++)
+        {
+          for (i = j; i <= _PB_MAXGRID - 1; i++)
+	        {
+            sum_diff[j][i][0] = diff[j][i][0];
+            for (cnt = 1; cnt <= _PB_LENGTH - 1; cnt++)
+              sum_diff[j][i][cnt] = sum_diff[j][i][cnt - 1] + diff[j][i][cnt];
+            mean[j][i] = sum_diff[j][i][_PB_LENGTH - 1];
+	        }
+        }
         #pragma omp for
-	for (i = 0; i <= _PB_MAXGRID - 1; i++)
-	  path[0][i] = mean[0][i];
-        #pragma omp for private (i)
-	for (j = 1; j <= _PB_MAXGRID - 1; j++)
-	  for (i = j; i <= _PB_MAXGRID - 1; i++)
-	    path[j][i] = path[j - 1][i - 1] + mean[j][i];
+        for (i = 0; i <= _PB_MAXGRID - 1; i++)
+          path[0][i] = mean[0][i];
+        #pragma omp for private (i) collapse(2) schedule(static)
+        for (j = 1; j <= _PB_MAXGRID - 1; j++)
+          for (i = j; i <= _PB_MAXGRID - 1; i++)
+            path[j][i] = path[j - 1][i - 1] + mean[j][i];
       }
+    }
   }
   #pragma endscop
 }

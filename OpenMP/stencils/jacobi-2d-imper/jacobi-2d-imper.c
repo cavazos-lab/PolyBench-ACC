@@ -67,19 +67,22 @@ void kernel_jacobi_2d_imper(int tsteps,
 
   #pragma scop
   
-  #pragma omp parallel private(i,j)
+  #pragma omp parallel private(i,j,t)
   {
-    for (t = 0; t < _PB_TSTEPS; t++)
+    #pragma omp master
+    {
+      for (t = 0; t < _PB_TSTEPS; t++)
       {
-        #pragma omp for
+        #pragma omp for schedule(static) 
         for (i = 1; i < _PB_N - 1; i++)
-	  for (j = 1; j < _PB_N - 1; j++)
-	    B[i][j] = 0.2 * (A[i][j] + A[i][j-1] + A[i][1+j] + A[1+i][j] + A[i-1][j]);
-	#pragma omp for
-	for (i = 1; i < _PB_N-1; i++)
-	  for (j = 1; j < _PB_N-1; j++)
-	    A[i][j] = B[i][j];
-       }
+          for (j = 1; j < _PB_N - 1; j++)
+            B[i][j] = 0.2 * (A[i][j] + A[i][j-1] + A[i][1+j] + A[1+i][j] + A[i-1][j]);
+	      #pragma omp for schedule(static) 
+        for (i = 1; i < _PB_N-1; i++)
+          for (j = 1; j < _PB_N-1; j++)
+            A[i][j] = B[i][j];
+      }
+    }
   }
   #pragma endscop
 }
