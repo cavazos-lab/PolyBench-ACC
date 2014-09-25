@@ -1,20 +1,16 @@
-# CODE GENERATION OPTIONS
-########################################
-
-# Default OpenACC Target is OpenCL
-TARGET_LANG = OPENCL
-
-# Uncomment if you want CUDA
-# TARGET_LANG = CUDA
 
 # COMPILER OPTIONS -- ACCELERATOR
 ########################################
 
 # Accelerator Compiler
-ACC = hmpp
+ACC = roseacc
 
 # Accelerator Compiler flags
-ACCFLAGS = --codelet-required --openacc-target=$(TARGET_LANG)
+ACCFLAGS=--roseacc:desc_format=static_data --roseacc:compile=true
+
+ACC_INC_PATH=`openacc --incpath`
+ACC_LIB_PATH=`openacc --libpath`
+ACC_LIBS=`openacc --libs`
 
 # COMPILER OPTIONS -- HOST
 ########################################
