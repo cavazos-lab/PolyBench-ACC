@@ -86,6 +86,11 @@ http://cavazos-lab.github.io/PolybenchGPU/Autotuning.a.High-Level.Language.Targe
 4. Run `make exe` in target folder(s) with codes to generate executable(s)
 5. Run the generated executable file(s).
 
+###OpenACC (RoseACC)
+1. Set up `PATH` and `LD_LIBRARY_PATH` environment variables for RoseACC (see [RoseACC's Getting Started](https://github.com/tristanvdb/RoseACC-workspace))
+2. Run `make exe` in target folder(s) with codes to generate executable(s)
+3. Run the generated executable file(s).
+
 Modifying Codes
 ------------------
 
