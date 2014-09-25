@@ -1,7 +1,8 @@
 INCPATHS = -I$(UTIL_DIR)
 
 BENCHMARK = $(shell basename `pwd`)
-EXE = $(BENCHMARK)_acc
+EXE = $(BENCHMARK)
+OBJ = rose_$(BENCHMARK).o $(BENCHMARK)-data.o
 SRC = $(BENCHMARK).c
 HEADERS = $(BENCHMARK).h
 
@@ -16,8 +17,11 @@ all : exe
 
 exe : $(EXE)
 
-$(EXE) : $(SRC)
-	$(ACC) $(ACCFLAGS) $(CC) $(CFLAGS) $(INCPATHS) $^ -o $@
+$(OBJ) : $(SRC)
+	$(ACC) $(ACCFLAGS) $(ACC_INC_PATH) $(INCPATHS) $^
+
+$(EXE) : $(OBJ)
+	$(CC) -o $@ $(CFLAGS) $(ACC_LIB_PATH) $^ $(ACC_LIBS)
 
 clean :
 	-rm -vf __hmpp* -vf $(EXE) *~ 
