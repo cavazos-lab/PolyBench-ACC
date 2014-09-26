@@ -23,7 +23,7 @@ Pouchet](pouchet@cs.ucla.edu) and available at http://www.cs.ucla.edu/~pouchet/s
 Scott Grauer-Gray, Lifan Xu, Robert Searles, Sudhee Ayalasomayajula, and John Cavazos. Auto-tuning a High-Level Language Targeted to GPU Codes. Proceedings of Innovative Parallel Computing (InPar '12), 2012.
 
 #####Paper download:
-http://cavazos-lab.github.io/PolybenchGPU/Autotuning.a.High-Level.Language.Targeted.to.GPU.Codes-paper.pdf
+http://cavazos-lab.github.io/Polybench-ACC/Autotuning.a.High-Level.Language.Targeted.to.GPU.Codes-paper.pdf
 
 ##Available Benchmarks
 
