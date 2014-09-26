@@ -1,4 +1,4 @@
-#PolyBench/GPU
+#PolyBench/ACC
 
 ###Copyright (c) 2012-2014 University of Delaware
 
