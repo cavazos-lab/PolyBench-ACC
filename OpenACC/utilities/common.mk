@@ -2,11 +2,9 @@ INCPATHS = -I$(UTIL_DIR)
 
 BENCHMARK = $(shell basename `pwd`)
 EXE = $(BENCHMARK)
-OBJ = rose_$(BENCHMARK).o $(BENCHMARK)-data.o
+OBJ = rose_$(BENCHMARK).c $(BENCHMARK)-data.c $(UTIL_DIR)/polybench.c
 SRC = $(BENCHMARK).c
 HEADERS = $(BENCHMARK).h
-
-SRC += $(UTIL_DIR)/polybench.c
 
 DEPS        := Makefile.dep
 DEP_FLAG    := -MM
@@ -20,11 +18,12 @@ exe : $(EXE)
 $(OBJ) : $(SRC)
 	$(ACC) $(ACCFLAGS) $(ACC_INC_PATH) $(INCPATHS) $^
 
-$(EXE) : $(OBJ)
-	$(CC) -o $@ $(CFLAGS) $(ACC_LIB_PATH) $^ $(ACC_LIBS)
+$(EXE) : $(OBJ) 
+	$(CC) -o $@ $(CFLAGS) $(ACC_INC_PATH) $(ACC_LIB_PATH) $(INCPATHS) $^ $(ACC_LIBS)
 
 clean :
 	-rm -vf __hmpp* -vf $(EXE) *~ 
+	-rm -rf rose_$(BENCHMARK).c $(BENCHMARK)-data.c $(BENCHMARK).cl $(BENCHMARK)
 
 veryclean : clean
 	-rm -vf $(DEPS)

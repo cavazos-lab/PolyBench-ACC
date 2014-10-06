@@ -1,0 +1,7 @@
+
+*-data.c
+*.cl
+Makefile.dep
+*.sl3
+rose_*.c
+

@@ -6,7 +6,7 @@
 ACC = roseacc
 
 # Accelerator Compiler flags
-ACCFLAGS=--roseacc:desc_format=static_data --roseacc:compile=true
+ACCFLAGS=--roseacc:desc_format=static_data --roseacc:compile=false
 
 ACC_INC_PATH=`openacc --incpath`
 ACC_LIB_PATH=`openacc --libpath`
