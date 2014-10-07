@@ -76,7 +76,7 @@ void kernel_bicg(int nx, int ny,
   {
     /* q := A*p */
     #pragma acc parallel present(q,A,p) \
-                         num_gangs(nx/128) num_workers(128)
+                         num_gangs(nx/100) num_workers(100)
     {
       #pragma acc loop gang worker
       for (i = 0; i < _PB_NX; i++) {
@@ -88,7 +88,7 @@ void kernel_bicg(int nx, int ny,
     }
     /* s := r*A */
     #pragma acc parallel present(s,r,A) \
-                         num_gangs(ny/128) num_workers(128)
+                         num_gangs(ny/100) num_workers(100)
     {
       #pragma acc loop gang worker
       for (j = 0; j < _PB_NY; j++) {

@@ -68,7 +68,7 @@ void kernel_atax(int nx, int ny,
   {
     /* tmp := A*x */
     #pragma acc parallel present(tmp,A,x) \
-                         num_gangs(nx/128) num_workers(128)
+                         num_gangs(nx/100) num_workers(100)
     {
       #pragma acc loop gang worker
       for (i = 0; i < _PB_NX; i++) {
@@ -80,7 +80,7 @@ void kernel_atax(int nx, int ny,
     }
     /* y := t(A)*tmp */
     #pragma acc parallel present(y,tmp,A) \
-                         num_gangs(ny/128) num_workers(128)
+                         num_gangs(ny/100) num_workers(100)
     {
       #pragma acc loop gang worker
       for (i = 0; i < _PB_NY; i++) {
