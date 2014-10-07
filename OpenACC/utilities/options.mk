@@ -20,3 +20,4 @@ CC = gcc
 
 # Compiler flags
 CFLAGS = -O2
+

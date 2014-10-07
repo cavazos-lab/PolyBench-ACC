@@ -23,8 +23,8 @@
 /* Array initialization. */
 static
 void init_array (int nx, int ny,
-		 DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny),
-		 DATA_TYPE POLYBENCH_1D(x,NY,ny))
+                 DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny),
+                 DATA_TYPE POLYBENCH_1D(x,NY,ny))
 {
   int i, j;
 
@@ -40,7 +40,7 @@ void init_array (int nx, int ny,
    Can be used also to check the correctness of the output. */
 static
 void print_array(int nx,
-		 DATA_TYPE POLYBENCH_1D(y,NX,nx))
+                 DATA_TYPE POLYBENCH_1D(y,NX,nx))
 
 {
   int i;
@@ -57,34 +57,40 @@ void print_array(int nx,
    including the call and return. */
 static
 void kernel_atax(int nx, int ny,
-		 DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny),
-		 DATA_TYPE POLYBENCH_1D(x,NY,ny),
-		 DATA_TYPE POLYBENCH_1D(y,NY,ny),
-		 DATA_TYPE POLYBENCH_1D(tmp,NX,nx))
+                 DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny),
+                 DATA_TYPE POLYBENCH_1D(x,NY,ny),
+                 DATA_TYPE POLYBENCH_1D(y,NY,ny),
+                 DATA_TYPE POLYBENCH_1D(tmp,NX,nx))
 {
   int i, j;
-  #pragma scop
+
   #pragma acc data copyout(y) copyin(A,x) create(tmp)
   {
-    #pragma acc parallel
+    /* tmp := A*x */
+    #pragma acc parallel present(tmp,A,x) \
+                         num_gangs(nx/100) num_workers(100)
     {
-      #pragma acc loop
-      for (i = 0; i < _PB_NY; i++)
-	y[i] = 0;
-      #pragma acc loop
-      for (i = 0; i < _PB_NX; i++)
-	{
-	  tmp[i] = 0;
-	  #pragma acc loop
-	  for (j = 0; j < _PB_NY; j++)
-	    tmp[i] = tmp[i] + A[i][j] * x[j];
-	  #pragma acc loop
-	  for (j = 0; j < _PB_NY; j++)
-	    y[j] = y[j] + A[i][j] * tmp[i];
-	}
+      #pragma acc loop gang worker
+      for (i = 0; i < _PB_NX; i++) {
+        tmp[i] = 0;
+        #pragma acc loop seq
+        for (j = 0; j < _PB_NY; j++)
+          tmp[i] = tmp[i] + A[i][j] * x[j];
+      }
+    }
+    /* y := t(A)*tmp */
+    #pragma acc parallel present(y,tmp,A) \
+                         num_gangs(ny/100) num_workers(100)
+    {
+      #pragma acc loop gang worker
+      for (i = 0; i < _PB_NY; i++) {
+        y[i] = 0;
+        #pragma acc loop seq
+        for (j = 0; j < _PB_NX; j++)
+          y[i] = y[i] + A[j][i] * tmp[j];
+      }
     }
   }
-  #pragma endscop
 }
 
 
@@ -108,10 +114,10 @@ int main(int argc, char** argv)
 
   /* Run kernel. */
   kernel_atax (nx, ny,
-	       POLYBENCH_ARRAY(A),
-	       POLYBENCH_ARRAY(x),
-	       POLYBENCH_ARRAY(y),
-	       POLYBENCH_ARRAY(tmp));
+               POLYBENCH_ARRAY(A),
+               POLYBENCH_ARRAY(x),
+               POLYBENCH_ARRAY(y),
+               POLYBENCH_ARRAY(tmp));
 
   /* Stop and print timer. */
   polybench_stop_instruments;
