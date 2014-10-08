@@ -88,32 +88,44 @@ void kernel_gemver(int n,
 		   DATA_TYPE POLYBENCH_1D(z,N,n))
 {
   int i, j;
-  #pragma scop
   #pragma acc data copy(w) copyin(A,x,u1,v1,u2,v2,y,z)
   {
-    #pragma acc parallel
+    #pragma acc parallel present(A,u1,v1,u2,v2) \
+                         num_gangs[0](n/8) num_gangs[1](n/8) \
+                         num_workers[0](8) num_workers[1](8)
     {
-      #pragma acc loop
+      #pragma acc loop gang[1] worker[1]
       for (i = 0; i < _PB_N; i++)
-	#pragma acc loop
+	#pragma acc loop gang[0] worker[0]
 	for (j = 0; j < _PB_N; j++)
-	  A[i][j] = A[i][j] + u1[i] * v1[j] + u2[i] * v2[j];
-      #pragma acc loop
+	  A[i][j] += u1[i] * v1[j] + u2[i] * v2[j];
+    }
+    #pragma acc parallel present(x,A,y) \
+                         num_gangs[0](n/100) num_workers[0](100)
+    {
+      #pragma acc loop gang[0] worker[0]
       for (i = 0; i < _PB_N; i++)
-	#pragma acc loop
+	#pragma acc loop seq
 	for (j = 0; j < _PB_N; j++)
-	  x[i] = x[i] + beta * A[j][i] * y[j];
-      #pragma acc loop
+	  x[i] += beta * A[j][i] * y[j];
+    }
+    #pragma acc parallel present(x,z) \
+                         num_gangs[0](n/100) num_workers[0](100)
+    {
+      #pragma acc loop gang[0] worker[0]
       for (i = 0; i < _PB_N; i++)
-	x[i] = x[i] + z[i];
-      #pragma acc loop
+	x[i] += z[i];
+    }
+    #pragma acc parallel present(w,A,x) \
+                         num_gangs[0](n/100) num_workers[0](100)
+    {
+      #pragma acc loop gang[0] worker[0]
       for (i = 0; i < _PB_N; i++)
-	#pragma acc loop
+	#pragma acc loop seq
 	for (j = 0; j < _PB_N; j++)
-	  w[i] = w[i] +  alpha * A[i][j] * x[j];
+	  w[i] += alpha * A[i][j] * x[j];
     }
   }
-  #pragma endscop
 }
 
 

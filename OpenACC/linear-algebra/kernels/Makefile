@@ -4,10 +4,10 @@ all:
 	make -C 3mm all
 	make -C atax all
 	make -C bicg all
-#	make -C cholesky all
-#	make -C doitgen all
-#	make -C gemm all
-#	make -C gemver all
+	make -C cholesky all
+	make -C doitgen all
+	make -C gemm all
+	make -C gemver all
 #	make -C gesummv all
 #	make -C mvt all
 #	make -C symm all
@@ -21,10 +21,10 @@ check:
 	make -C 3mm check
 	make -C atax check
 	make -C bicg check
-#	make -C cholesky check
-#	make -C doitgen check
-#	make -C gemm check
-#	make -C gemver check
+	make -C cholesky check
+	make -C doitgen check
+	make -C gemm check
+	make -C gemver check
 #	make -C gesummv check
 #	make -C mvt check
 #	make -C symm check
@@ -38,10 +38,10 @@ clean:
 	make -C 3mm clean
 	make -C atax clean
 	make -C bicg clean
-#	make -C cholesky clean
-#	make -C doitgen clean
-#	make -C gemm clean
-#	make -C gemver clean
+	make -C cholesky clean
+	make -C doitgen clean
+	make -C gemm clean
+	make -C gemver clean
 #	make -C gesummv clean
 #	make -C mvt clean
 #	make -C symm clean

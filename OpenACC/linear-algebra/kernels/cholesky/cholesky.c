@@ -23,8 +23,8 @@
 /* Array initialization. */
 static
 void init_array(int n,
-		DATA_TYPE POLYBENCH_1D(p,N,n),
-		DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
+                DATA_TYPE POLYBENCH_1D(p,N,n),
+                DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
   int i, j;
 
@@ -32,7 +32,7 @@ void init_array(int n,
     {
       p[i] = 1.0 / n;
       for (j = 0; j < n; j++)
-	A[i][j] = 1.0 / n;
+        A[i][j] = 1.0 / n;
     }
 }
 
@@ -41,7 +41,7 @@ void init_array(int n,
    Can be used also to check the correctness of the output. */
 static
 void print_array(int n,
-		 DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
+                 DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 
 {
   int i, j;
@@ -58,37 +58,33 @@ void print_array(int n,
    including the call and return. */
 static
 void kernel_cholesky(int n,
-		     DATA_TYPE POLYBENCH_1D(p,N,n),
-		     DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
+                     DATA_TYPE POLYBENCH_1D(p,N,n),
+                     DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
   int i, j, k;
-
-  DATA_TYPE x;
-  #pragma scop
-  #pragma acc data copy(A) copyin (p)
+  
+  #pragma acc data copy(A) copyin(p)
   {
-    #pragma acc parallel
+    #pragma acc parallel present(A,p) \
+                         num_gangs(n/128) num_workers(128)
     {
-      #pragma acc loop
-      for (i = 0; i < _PB_N; ++i)
-	{
-	  x = A[i][i];
-	  #pragma acc loop
-	  for (j = 0; j <= i - 1; ++j)
-	    x = x - A[i][j] * A[i][j];
-	  p[i] = 1.0 / sqrt(x);
-	  for (j = i + 1; j < _PB_N; ++j)
-	    {
-	      x = A[i][j];
-	      #pragma acc loop
-	      for (k = 0; k <= i - 1; ++k)
-		x = x - A[j][k] * A[i][k];
-	      A[j][i] = x * p[i];
-	    }
-	}
+      #pragma acc loop gang worker
+      for (i = 0; i < _PB_N; ++i) {
+        DATA_TYPE x = A[i][i];
+        #pragma acc loop seq
+        for (j = 0; j <= i - 1; ++j)
+          x = x - A[i][j] * A[i][j];
+        p[i] = 1.0 / sqrt(x);
+        for (j = i + 1; j < _PB_N; ++j) {
+          x = A[i][j];
+          #pragma acc loop seq
+          for (k = 0; k <= i - 1; ++k)
+            x = x - A[j][k] * A[i][k];
+          A[j][i] = x * p[i];
+        }
+      }
     }
   }
-  #pragma endscop
 }
 
 

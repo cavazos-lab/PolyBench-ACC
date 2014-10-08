@@ -23,15 +23,15 @@
 /* Array initialization. */
 static
 void init_array(int nr, int nq, int np,
-		DATA_TYPE POLYBENCH_3D(A,NR,NQ,NP,nr,nq,np),
-		DATA_TYPE POLYBENCH_2D(C4,NP,NP,np,np))
+                DATA_TYPE POLYBENCH_3D(A,NR,NQ,NP,nr,nq,np),
+                DATA_TYPE POLYBENCH_2D(C4,NP,NP,np,np))
 {
   int i, j, k;
 
   for (i = 0; i < nr; i++)
     for (j = 0; j < nq; j++)
       for (k = 0; k < np; k++)
-	A[i][j][k] = ((DATA_TYPE) i*j + k) / np;
+        A[i][j][k] = ((DATA_TYPE) i*j + k) / np;
   for (i = 0; i < np; i++)
     for (j = 0; j < np; j++)
       C4[i][j] = ((DATA_TYPE) i*j) / np;
@@ -42,15 +42,15 @@ void init_array(int nr, int nq, int np,
    Can be used also to check the correctness of the output. */
 static
 void print_array(int nr, int nq, int np,
-		 DATA_TYPE POLYBENCH_3D(A,NR,NQ,NP,nr,nq,np))
+                 DATA_TYPE POLYBENCH_3D(A,NR,NQ,NP,nr,nq,np))
 {
   int i, j, k;
 
   for (i = 0; i < nr; i++)
     for (j = 0; j < nq; j++)
       for (k = 0; k < np; k++) {
-	fprintf (stderr, DATA_PRINTF_MODIFIER, A[i][j][k]);
-	if (i % 20 == 0) fprintf (stderr, "\n");
+        fprintf (stderr, DATA_PRINTF_MODIFIER, A[i][j][k]);
+        if (i % 20 == 0) fprintf (stderr, "\n");
       }
   fprintf (stderr, "\n");
 }
@@ -60,34 +60,34 @@ void print_array(int nr, int nq, int np,
    including the call and return. */
 static
 void kernel_doitgen(int nr, int nq, int np,
-		    DATA_TYPE POLYBENCH_3D(A,NR,NQ,NP,nr,nq,np),
-		    DATA_TYPE POLYBENCH_2D(C4,NP,NP,np,np),
-		    DATA_TYPE POLYBENCH_3D(sum,NR,NQ,NP,nr,nq,np))
+                    DATA_TYPE POLYBENCH_3D(A,NR,NQ,NP,nr,nq,np),
+                    DATA_TYPE POLYBENCH_2D(C4,NP,NP,np,np),
+                    DATA_TYPE POLYBENCH_3D(sum,NR,NQ,NP,nr,nq,np))
 {
   int r, q, p, s;
-  #pragma scop
-  #pragma acc data copy(A) copyin(C4) create(sum)
+  
+  #pragma acc data copy(A) copyin(C4)
   {
-    #pragma acc parallel
+    #pragma acc parallel present(A,C4) \
+                         num_gangs[0](nr) num_gangs[1](nq) \
+                         num_workers[0](np) num_workers[1](1)
     {
-      #pragma acc loop
-      for (r = 0; r < _PB_NR; r++)
-	for (q = 0; q < _PB_NQ; q++) 
-	  {
-	    #pragma acc loop
-	    for (p = 0; p < _PB_NP; p++)
-	      {
-		sum[r][q][p] = 0;
-		for (s = 0; s < _PB_NP; s++)
-		  sum[r][q][p] = sum[r][q][p] + A[r][q][s] * C4[s][p];
-	      }
-            #pragma acc loop
-	    for (p = 0; p < _PB_NR; p++)
-	      A[r][q][p] = sum[r][q][p];
-	}
+      #pragma acc loop gang[0]
+      for (r = 0; r < _PB_NR; r++) {
+        #pragma acc loop gang[1]
+        for (q = 0; q < _PB_NQ; q++) {
+          #pragma acc loop worker[0]
+          for (p = 0; p < _PB_NP; p++) {
+            DATA_TYPE sum_ = 0;
+            #pragma acc loop seq
+            for (s = 0; s < _PB_NP; s++)
+              sum_ += A[r][q][s] * C4[s][p];
+            A[r][q][p] = sum_;
+          }
+        }
+      }
     }
   }
-  #pragma endscop
 }
 
 int main(int argc, char** argv)
@@ -104,17 +104,17 @@ int main(int argc, char** argv)
 
   /* Initialize array(s). */
   init_array (nr, nq, np,
-	      POLYBENCH_ARRAY(A),
-	      POLYBENCH_ARRAY(C4));
+              POLYBENCH_ARRAY(A),
+              POLYBENCH_ARRAY(C4));
 
   /* Start timer. */
   polybench_start_instruments;
 
   /* Run kernel. */
   kernel_doitgen (nr, nq, np,
-		  POLYBENCH_ARRAY(A),
-		  POLYBENCH_ARRAY(C4),
-		  POLYBENCH_ARRAY(sum));
+                  POLYBENCH_ARRAY(A),
+                  POLYBENCH_ARRAY(C4),
+                  POLYBENCH_ARRAY(sum));
 
   /* Stop and print timer. */
   polybench_stop_instruments;

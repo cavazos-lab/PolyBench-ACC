@@ -82,7 +82,7 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
   /* D := alpha*A*B*C + beta*D */
   #pragma acc data copyin(A,B,C) create(tmp) copyout (D)
   {
-    #pragma acc parallel present_or_copyin(A,B) present_or_copyout(A,B,tmp) \
+    #pragma acc parallel present(A,B,tmp) \
                          num_gangs[0](nj/8) num_gangs[1](ni/8) \
                          num_workers[0](8) num_workers[1](8)
     {
@@ -98,7 +98,7 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
       }
     }
 
-    #pragma acc parallel present_or_copyin(C,tmp) present_or_copy(D) \
+    #pragma acc parallel present(C,D,tmp) \
                          num_gangs[0](ni/8) num_gangs[1](nl/8) \
                          num_workers[0](8) num_workers[1](8)
     {
