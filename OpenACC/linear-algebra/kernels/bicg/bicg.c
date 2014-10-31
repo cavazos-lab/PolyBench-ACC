@@ -19,6 +19,8 @@
 /* Default data type is double, default size is 4000. */
 #include "bicg.h"
 
+#include <assert.h>
+
 
 /* Array initialization. */
 static
@@ -72,6 +74,10 @@ void kernel_bicg(int nx, int ny,
                  DATA_TYPE POLYBENCH_1D(r,NX,nx))
 {
   int i, j;
+
+  assert(nx%100==0);
+  assert(ny%100==0);
+  
   #pragma acc data copyout(s,q) copyin(A,r,p)
   {
     /* q := A*p */

@@ -19,6 +19,8 @@
 /* Default data type is double, default size is 4000. */
 #include "gemm.h"
 
+#include <assert.h>
+
 
 /* Array initialization. */
 static
@@ -73,6 +75,10 @@ void kernel_gemm(int ni, int nj, int nk,
 		 DATA_TYPE POLYBENCH_2D(B,NK,NJ,nk,nj))
 {
   int i, j, k;
+
+  assert(ni%8==0);
+  assert(nj%8==0);
+
   #pragma acc data copyin(A,B) copy(C)
   {
     #pragma acc parallel present(A,B,C) \

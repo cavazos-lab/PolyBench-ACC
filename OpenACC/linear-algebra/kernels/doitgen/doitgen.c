@@ -19,6 +19,8 @@
 /* Default data type is double, default size is 4000. */
 #include "doitgen.h"
 
+#include <assert.h>
+
 
 /* Array initialization. */
 static
@@ -65,7 +67,7 @@ void kernel_doitgen(int nr, int nq, int np,
                     DATA_TYPE POLYBENCH_3D(sum,NR,NQ,NP,nr,nq,np))
 {
   int r, q, p, s;
-  
+
   #pragma acc data copy(A) copyin(C4)
   {
     #pragma acc parallel present(A,C4) \

@@ -19,6 +19,8 @@
 /* Default data type is double, default size is 4000. */
 #include "gemver.h"
 
+#include <assert.h>
+
 
 /* Array initialization. */
 static
@@ -88,6 +90,10 @@ void kernel_gemver(int n,
 		   DATA_TYPE POLYBENCH_1D(z,N,n))
 {
   int i, j;
+
+  assert(n%8==0);
+  assert(n%100==0);
+
   #pragma acc data copy(w) copyin(A,x,u1,v1,u2,v2,y,z)
   {
     #pragma acc parallel present(A,u1,v1,u2,v2) \

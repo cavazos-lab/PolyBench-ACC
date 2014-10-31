@@ -1,13 +1,19 @@
 INCPATHS = -I$(UTIL_DIR)
 
 BENCHMARK = $(shell basename `pwd`)
-EXE = $(BENCHMARK)
+EXE = $(BENCHMARK)-seq $(BENCHMARK)-acc
 OBJ = rose_$(BENCHMARK).c
 SRC = $(BENCHMARK).c
 HEADERS = $(BENCHMARK).h
 
 DEPS        := Makefile.dep
 DEP_FLAG    := -MM
+
+ACC_EXEC_ENV?=ACC_PROFILING_DB=profile.db
+
+DATASET?=-DLARGE_DATASET
+DATATYPE?=-DDATA_TYPE=float -DDATA_PRINTF_MODIFIER="\"%0.2f \""
+TIMER?=-DPOLYBENCH_TIME
 
 .PHONY: all exe clean veryclean
 
@@ -16,17 +22,21 @@ all : exe
 exe : $(EXE)
 
 $(OBJ) : $(SRC)
-	$(ACC) $(ACCFLAGS) $(ACC_INC_PATH) $(INCPATHS) $^
+	$(ACC) $(CFLAGS) $(DATASET) $(DATATYPE) $(TIMER) $(ACCFLAGS) $(ACC_INC_PATH) $(INCPATHS) $^
 
-$(EXE) : $(OBJ) $(BENCHMARK)-data.c $(UTIL_DIR)/polybench.c
-	$(CC) -o $@ $(CFLAGS) $(ACC_INC_PATH) $(ACC_LIB_PATH) $(INCPATHS) $^ $(ACC_LIBS)
+$(BENCHMARK)-acc: $(OBJ) $(BENCHMARK)-data.c $(UTIL_DIR)/polybench.c
+	$(CC) -o $@ $(CFLAGS) $(DATASET) $(DATATYPE) $(TIMER) $(ACC_INC_PATH) $(ACC_LIB_PATH) $(INCPATHS) $^ $(ACC_LIBS)
+
+$(BENCHMARK)-seq: $(SRC) $(UTIL_DIR)/polybench.c
+	$(CC) -o $@ $(CFLAGS) $(DATASET) $(DATATYPE) $(TIMER) $(INCPATHS) $^ -lm
 
 check: exe
-	./$(EXE)
+	./$(BENCHMARK)-seq
+	$(ACC_EXEC_ENV) ./$(BENCHMARK)-acc
 
 clean :
-	-rm -vf __hmpp* -vf $(EXE) *~ 
-	-rm -rf rose_$(BENCHMARK).c $(BENCHMARK)-data.c $(BENCHMARK).cl $(BENCHMARK)
+	-rm -vf __hmpp* -vf $(EXE) *.sl3 *~ 
+	-rm -vf rose_$(BENCHMARK).c $(BENCHMARK)-data.c $(BENCHMARK).cl $(BENCHMARK)
 
 veryclean : clean
 	-rm -vf $(DEPS)

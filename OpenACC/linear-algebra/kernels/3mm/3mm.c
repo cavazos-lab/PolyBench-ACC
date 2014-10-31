@@ -19,6 +19,8 @@
 /* Default data type is double, default size is 4000. */
 #include "3mm.h"
 
+#include <assert.h>
+
 
 /* Array initialization. */
 static
@@ -75,6 +77,10 @@ void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
                 DATA_TYPE POLYBENCH_2D(G,NI,NL,ni,nl))
 {
   int i, j, k;
+
+  assert(ni%8==0);
+  assert(nj%8==0);
+  assert(nl%8==0);
 
   #pragma acc data copyin(A,B,C,D) create(E,F) copyout(G)
   {

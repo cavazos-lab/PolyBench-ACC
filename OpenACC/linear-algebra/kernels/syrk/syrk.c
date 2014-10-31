@@ -19,6 +19,8 @@
 /* Default data type is double, default size is 4000. */
 #include "syrk.h"
 
+#include <assert.h>
+
 
 /* Array initialization. */
 static

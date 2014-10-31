@@ -4,4 +4,6 @@
 Makefile.dep
 *.sl3
 rose_*.c
-
+*-seq
+*-acc
+profile.db

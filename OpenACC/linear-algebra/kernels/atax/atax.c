@@ -19,6 +19,8 @@
 /* Default data type is double, default size is 4000. */
 #include "atax.h"
 
+#include <assert.h>
+
 
 /* Array initialization. */
 static
@@ -63,6 +65,9 @@ void kernel_atax(int nx, int ny,
                  DATA_TYPE POLYBENCH_1D(tmp,NX,nx))
 {
   int i, j;
+
+  assert(nx%100==0);
+  assert(ny%100==0);
 
   #pragma acc data copyout(y) copyin(A,x) create(tmp)
   {

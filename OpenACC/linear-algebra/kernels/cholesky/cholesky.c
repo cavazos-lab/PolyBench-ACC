@@ -19,6 +19,8 @@
 /* Default data type is double, default size is 4000. */
 #include "cholesky.h"
 
+#include <assert.h>
+
 
 /* Array initialization. */
 static
@@ -62,11 +64,17 @@ void kernel_cholesky(int n,
                      DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
 {
   int i, j, k;
-  
+
+  assert(n%128 == 0 || n%100 == 0);
+
+  int num_workers = (n%128 == 0) ? 128 : 100;
+
+  assert(n%num_workers==0);
+
   #pragma acc data copy(A) copyin(p)
   {
     #pragma acc parallel present(A,p) \
-                         num_gangs(n/128) num_workers(128)
+                         num_gangs(n/num_workers) num_workers(num_workers)
     {
       #pragma acc loop gang worker
       for (i = 0; i < _PB_N; ++i) {
