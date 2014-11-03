@@ -57,7 +57,13 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
-#define RUN_ON_CPU
+#ifndef RUN_ON_CPU
+#define RUN_ON_CPU 1
+#endif
+
+#define KERNEL_FILE "jacobi1D.cl"
+
+#include "ocl_common.c"
 
 
 void compareResults(int n, DATA_TYPE POLYBENCH_1D(a,N,n), DATA_TYPE POLYBENCH_1D(a_outFromGpu,N,n), DATA_TYPE POLYBENCH_1D(b,N,n), 
@@ -86,20 +92,6 @@ void compareResults(int n, DATA_TYPE POLYBENCH_1D(a,N,n), DATA_TYPE POLYBENCH_1D
 	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
 }
 
-
-void read_cl_file()
-{
-	// Load the kernel source code into the array source_str
-	fp = fopen("jacobi1D.cl", "r");
-	if (!fp) {
-		fprintf(stderr, "Failed to load kernel.\n");
-		exit(1);
-	}
-	source_str = (char*)malloc(MAX_SOURCE_SIZE);
-	source_size = fread( source_str, 1, MAX_SOURCE_SIZE, fp);
-	fclose( fp );
-}
-
 void init_array(int n, DATA_TYPE POLYBENCH_1D(A,N,n), DATA_TYPE POLYBENCH_1D(B,N,n))
 {
 	int i;
@@ -111,36 +103,6 @@ void init_array(int n, DATA_TYPE POLYBENCH_1D(A,N,n), DATA_TYPE POLYBENCH_1D(B,N
     	}
 }
 
-
-void cl_initialization()
-{
-	
-	// Get platform and device information
-	errcode = clGetPlatformIDs(1, &platform_id, &num_platforms);
-	if(errcode == CL_SUCCESS) printf("number of platforms is %d\n",num_platforms);
-
-	errcode = clGetPlatformInfo(platform_id,CL_PLATFORM_NAME, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("platform name is %s\n",str_temp);
-
-	errcode = clGetPlatformInfo(platform_id, CL_PLATFORM_VERSION, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("platform version is %s\n",str_temp);
-
-	errcode = clGetDeviceIDs( platform_id, OPENCL_DEVICE_SELECTION, 1, &device_id, &num_devices);
-	if(errcode == CL_SUCCESS) printf("device id is %d\n",device_id);
-
-	errcode = clGetDeviceInfo(device_id,CL_DEVICE_NAME, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("device name is %s\n",str_temp);
-	
-	// Create an OpenCL context
-	clGPUContext = clCreateContext( NULL, 1, &device_id, NULL, NULL, &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating context\n");
- 
-	//Create a command-queue
-	clCommandQue = clCreateCommandQueue(clGPUContext, device_id, 0, &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating command queue\n");
-}
-
-
 void cl_mem_init(DATA_TYPE POLYBENCH_1D(A,N,n), DATA_TYPE POLYBENCH_1D(B,N,n))
 {
 	a_mem_obj = clCreateBuffer(clGPUContext, CL_MEM_READ_WRITE, N * sizeof(DATA_TYPE), NULL, &errcode);
@@ -151,26 +113,6 @@ void cl_mem_init(DATA_TYPE POLYBENCH_1D(A,N,n), DATA_TYPE POLYBENCH_1D(B,N,n))
 	errcode = clEnqueueWriteBuffer(clCommandQue, a_mem_obj, CL_TRUE, 0, N * sizeof(DATA_TYPE), A, 0, NULL, NULL);
 	errcode = clEnqueueWriteBuffer(clCommandQue, b_mem_obj, CL_TRUE, 0, N * sizeof(DATA_TYPE), B, 0, NULL, NULL);
 	if(errcode != CL_SUCCESS)printf("Error in writing buffers\n");
-}
-
-
-void cl_load_prog()
-{
-	// Create a program from the kernel source
-	clProgram = clCreateProgramWithSource(clGPUContext, 1, (const char **)&source_str, (const size_t *)&source_size, &errcode);
-
-	if(errcode != CL_SUCCESS) printf("Error in creating program\n");
-
-	// Build the program
-	errcode = clBuildProgram(clProgram, 1, &device_id, NULL, NULL, NULL);
-	if(errcode != CL_SUCCESS) printf("Error in building program\n");
-		
-	// Create the OpenCL kernel
-	clKernel1 = clCreateKernel(clProgram, "runJacobi1D_kernel1", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel\n");
-	clKernel2 = clCreateKernel(clProgram, "runJacobi1D_kernel2", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel\n");
-	clFinish(clCommandQue);
 }
 
 
@@ -283,11 +225,19 @@ int main(int argc, char *argv[])
 
 	read_cl_file();
 	cl_initialization();
-	cl_mem_init(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(b));
 	cl_load_prog();
+		
+	// Create the OpenCL kernel
+	clKernel1 = clCreateKernel(clProgram, "runJacobi1D_kernel1", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel\n");
+	clKernel2 = clCreateKernel(clProgram, "runJacobi1D_kernel2", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel\n");
+	clFinish(clCommandQue);
 
 	/* Start timer. */
   	polybench_start_instruments;
+
+	cl_mem_init(POLYBENCH_ARRAY(a), POLYBENCH_ARRAY(b));
 	
 	int t;
 	for (t = 0; t < _PB_TSTEPS ; t++)
@@ -295,18 +245,20 @@ int main(int argc, char *argv[])
 		cl_launch_kernel1(n);
 		cl_launch_kernel2(n);
 	}
-
-	/* Stop and print timer. */
-	printf("GPU Time in seconds:\n");
-  	polybench_stop_instruments;
- 	polybench_print_instruments;
 	
 	errcode = clEnqueueReadBuffer(clCommandQue, a_mem_obj, CL_TRUE, 0, N * sizeof(DATA_TYPE), POLYBENCH_ARRAY(a_outputFromGpu), 0, NULL, NULL);
 	errcode = clEnqueueReadBuffer(clCommandQue, b_mem_obj, CL_TRUE, 0, N * sizeof(DATA_TYPE), POLYBENCH_ARRAY(b_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
+
+	/* Stop and print timer. */
+#if VERBOSE == 1
+	printf("GPU Time in seconds:\n");
+#endif
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
 		
 
-	#ifdef RUN_ON_CPU
+	#if RUN_ON_CPU == 1
 
 		/* Start timer. */
 	  	polybench_start_instruments;

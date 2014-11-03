@@ -68,7 +68,13 @@ unsigned int mem_size_A;
 unsigned int mem_size_B;
 unsigned int mem_size_X;
 
-#define RUN_ON_CPU
+#ifndef RUN_ON_CPU
+#define RUN_ON_CPU 1
+#endif
+
+#define KERNEL_FILE "adi.cl"
+
+#include "ocl_common.c"
 
 
 void init_array(int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
@@ -120,49 +126,6 @@ void compareResults(int n, DATA_TYPE POLYBENCH_2D(B_cpu,N,N,n,n), DATA_TYPE POLY
 	printf("Non-Matching CPU-GPU Outputs Beyond Error Threshold of %4.2f Percent: %d\n", PERCENT_DIFF_ERROR_THRESHOLD, fail);
 }
 
-
-void read_cl_file()
-{
-	// Load the kernel source code into the array source_str
-	fp = fopen("adi.cl", "r");
-	if (!fp) {
-		fprintf(stderr, "Failed to load kernel.\n");
-		exit(1);
-	}
-	source_str = (char*)malloc(MAX_SOURCE_SIZE);
-	source_size = fread( source_str, 1, MAX_SOURCE_SIZE, fp);
-	fclose( fp );
-}
-
-
-void cl_initialization()
-{
-	
-	// Get platform and device information
-	errcode = clGetPlatformIDs(1, &platform_id, &num_platforms);
-	if(errcode == CL_SUCCESS) printf("number of platforms is %d\n",num_platforms);
-
-	errcode = clGetPlatformInfo(platform_id,CL_PLATFORM_NAME, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("platform name is %s\n",str_temp);
-
-	errcode = clGetPlatformInfo(platform_id, CL_PLATFORM_VERSION, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("platform version is %s\n",str_temp);
-
-	errcode = clGetDeviceIDs( platform_id, OPENCL_DEVICE_SELECTION, 1, &device_id, &num_devices);
-	if(errcode == CL_SUCCESS) printf("device id is %d\n",device_id);
-
-	errcode = clGetDeviceInfo(device_id,CL_DEVICE_NAME, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("device name is %s\n",str_temp);
-	
-	// Create an OpenCL context
-	clGPUContext = clCreateContext( NULL, 1, &device_id, NULL, NULL, &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating context\n");
- 
-	//Create a command-queue
-	clCommandQue = clCreateCommandQueue(clGPUContext, device_id, 0, &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating command queue\n");
-}
-
 void cl_mem_init(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N,n,n), DATA_TYPE POLYBENCH_2D(X,N,N,n,n))
 {
 	mem_size_A = N*N*sizeof(DATA_TYPE);
@@ -180,32 +143,6 @@ void cl_mem_init(DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(B,N,N
 	errcode |= clEnqueueWriteBuffer(clCommandQue, x_mem_obj, CL_TRUE, 0, mem_size_X, X, 0, NULL, NULL);
 	if(errcode != CL_SUCCESS)printf("Error in writing buffers\n");
  }
-
-void cl_load_prog()
-{
-	// Create a program from the kernel source
-	clProgram = clCreateProgramWithSource(clGPUContext, 1, (const char **)&source_str, (const size_t *)&source_size, &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating program\n");
-
-	// Build the program
-	errcode = clBuildProgram(clProgram, 1, &device_id, NULL, NULL, NULL);
-	if(errcode != CL_SUCCESS) printf("Error in building program\n");
-		
-	// Create the OpenCL kernel
-	clKernel1 = clCreateKernel(clProgram, "adi_kernel1", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel1\n");
-	clKernel2 = clCreateKernel(clProgram, "adi_kernel2", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel2\n");
-	clKernel3 = clCreateKernel(clProgram, "adi_kernel3", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel3\n");
-	clKernel4 = clCreateKernel(clProgram, "adi_kernel4", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel4\n");
-	clKernel5 = clCreateKernel(clProgram, "adi_kernel5", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel5\n");
-	clKernel6 = clCreateKernel(clProgram, "adi_kernel6", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel6\n");
-	clFinish(clCommandQue);
-}
 
 void cl_launch_kernel1(int n)
 {
@@ -437,15 +374,30 @@ int main(int argc, char *argv[])
 	POLYBENCH_2D_ARRAY_DECL(X,DATA_TYPE,N,N,n,n);
 	POLYBENCH_2D_ARRAY_DECL(X_outputFromGpu,DATA_TYPE,N,N,n,n);
 
-	init_array(n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(X));
-
 	read_cl_file();
 	cl_initialization();
 	cl_mem_init(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(X));
 	cl_load_prog();
+		
+	// Create the OpenCL kernel
+	clKernel1 = clCreateKernel(clProgram, "adi_kernel1", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel1\n");
+	clKernel2 = clCreateKernel(clProgram, "adi_kernel2", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel2\n");
+	clKernel3 = clCreateKernel(clProgram, "adi_kernel3", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel3\n");
+	clKernel4 = clCreateKernel(clProgram, "adi_kernel4", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel4\n");
+	clKernel5 = clCreateKernel(clProgram, "adi_kernel5", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel5\n");
+	clKernel6 = clCreateKernel(clProgram, "adi_kernel6", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel6\n");
+	clFinish(clCommandQue);
 	
 	/* Start timer. */
   	polybench_start_instruments;
+
+	init_array(n, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(X));
 
 	int t, i1;
 
@@ -468,19 +420,21 @@ int main(int argc, char *argv[])
 		{
 			cl_launch_kernel6(i1, n);
 		}
-	}	
-	
-	/* Stop and print timer. */
-	printf("GPU Time in seconds:\n");
-  	polybench_stop_instruments;
- 	polybench_print_instruments;
+	}
 
 	errcode = clEnqueueReadBuffer(clCommandQue, b_mem_obj, CL_TRUE, 0, mem_size_B, POLYBENCH_ARRAY(B_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
 	errcode = clEnqueueReadBuffer(clCommandQue, x_mem_obj, CL_TRUE, 0, mem_size_X, POLYBENCH_ARRAY(X_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
 	
-	#ifdef RUN_ON_CPU
+	/* Stop and print timer. */
+#if VERBOSE == 1
+	printf("GPU Time in seconds:\n");
+#endif
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
+	
+	#if RUN_ON_CPU == 1
 	
 		/* Start timer. */
 	  	polybench_start_instruments;

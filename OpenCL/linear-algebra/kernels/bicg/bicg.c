@@ -67,7 +67,13 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
-#define RUN_ON_CPU
+#ifndef RUN_ON_CPU
+#define RUN_ON_CPU 1
+#endif
+
+#define KERNEL_FILE "bicg.cl"
+
+#include "ocl_common.c"
 
 
 void compareResults(int nx, int ny, DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE POLYBENCH_1D(s_outputFromGpu,NY,ny), 
@@ -98,20 +104,6 @@ void compareResults(int nx, int ny, DATA_TYPE POLYBENCH_1D(s,NY,ny), DATA_TYPE P
 }
 
 
-void read_cl_file()
-{
-	// Load the kernel source code into the array source_str
-	fp = fopen("bicg.cl", "r");
-	if (!fp) {
-		fprintf(stderr, "Failed to load kernel.\n");
-		exit(1);
-	}
-	source_str = (char*)malloc(MAX_SOURCE_SIZE);
-	source_size = fread( source_str, 1, MAX_SOURCE_SIZE, fp);
-	fclose( fp );
-}
-
-
 void init_array(int nx, int ny, DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx))
 {
 	int i, j;
@@ -130,39 +122,6 @@ void init_array(int nx, int ny, DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE
       			A[i][j] = ((DATA_TYPE) i*j) / NX;
 		}
  	}
-}
-
-
-void cl_initialization()
-{	
-	// Get platform and device information
-	errcode = clGetPlatformIDs(1, &platform_id, &num_platforms);
-	if(errcode == CL_SUCCESS) printf("number of platforms is %d\n",num_platforms);
-	else printf("Error getting platform IDs\n");
-
-	errcode = clGetPlatformInfo(platform_id,CL_PLATFORM_NAME, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("platform name is %s\n",str_temp);
-	else printf("Error getting platform name\n");
-
-	errcode = clGetPlatformInfo(platform_id, CL_PLATFORM_VERSION, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("platform version is %s\n",str_temp);
-	else printf("Error getting platform version\n");
-
-	errcode = clGetDeviceIDs( platform_id, OPENCL_DEVICE_SELECTION, 1, &device_id, &num_devices);
-	if(errcode == CL_SUCCESS) printf("number of devices is %d\n", num_devices);
-	else printf("Error getting device IDs\n");
-
-	errcode = clGetDeviceInfo(device_id,CL_DEVICE_NAME, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("device name is %s\n",str_temp);
-	else printf("Error getting device name\n");
-	
-	// Create an OpenCL context
-	clGPUContext = clCreateContext( NULL, 1, &device_id, NULL, NULL, &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating context\n");
- 
-	//Create a command-queue
-	clCommandQue = clCreateCommandQueue(clGPUContext, device_id, 0, &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating command queue\n");
 }
 
 
@@ -185,28 +144,6 @@ void cl_mem_init(DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(r
 	if(errcode != CL_SUCCESS)printf("Error in writing buffers\n");
  }
 
-void cl_load_prog()
-{
-	// Create a program from the kernel source
-	clProgram = clCreateProgramWithSource(clGPUContext, 1, (const char **)&source_str, (const size_t *)&source_size, &errcode);
-
-	if(errcode != CL_SUCCESS) printf("Error in creating program\n");
-
-	// Build the program
-	errcode = clBuildProgram(clProgram, 1, &device_id, NULL, NULL, NULL);
-	if(errcode != CL_SUCCESS) printf("Error in building program\n");
-		
-	// Create the 1st OpenCL kernel
-	clKernel1 = clCreateKernel(clProgram, "bicgKernel1", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel\n");
-
-	// Create the 2nd OpenCL kernel
-	clKernel2 = clCreateKernel(clProgram, "bicgKernel2", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel\n");
-
-	clFinish(clCommandQue);
-}
-
 void cl_launch_kernel(int nx, int ny)
 {
 	size_t localWorkSize[2], globalWorkSize[2];
@@ -214,9 +151,6 @@ void cl_launch_kernel(int nx, int ny)
 	localWorkSize[1] = DIM_LOCAL_WORK_GROUP_Y;
 	globalWorkSize[0] = (size_t)ceil(((float)NX) / ((float)DIM_LOCAL_WORK_GROUP_X)) * DIM_LOCAL_WORK_GROUP_X;
 	globalWorkSize[1] = 1;
-
-	/* Start timer. */
-  	polybench_start_instruments;
 	
 	// Set the arguments of the kernel
 	errcode =  clSetKernelArg(clKernel1, 0, sizeof(cl_mem), (void *)&a_mem_obj);
@@ -246,11 +180,6 @@ void cl_launch_kernel(int nx, int ny)
 	errcode = clEnqueueNDRangeKernel(clCommandQue, clKernel2, 1, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in launching kernel\n");
 	clFinish(clCommandQue);
-
-	/* Stop and print timer. */
-	printf("GPU Time in seconds:\n");
-  	polybench_stop_instruments;
- 	polybench_print_instruments;
 }
 
 
@@ -334,16 +263,36 @@ int main(int argc, char *argv[])
 	
 	read_cl_file();
 	cl_initialization();
-	cl_mem_init(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(r), POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(q));
 	cl_load_prog();
+		
+	// Create the 1st OpenCL kernel
+	clKernel1 = clCreateKernel(clProgram, "bicgKernel1", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel\n");
 
+	// Create the 2nd OpenCL kernel
+	clKernel2 = clCreateKernel(clProgram, "bicgKernel2", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel\n");
+
+	clFinish(clCommandQue);
+
+	/* Start timer. */
+  	polybench_start_instruments;
+
+	cl_mem_init(POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(r), POLYBENCH_ARRAY(s), POLYBENCH_ARRAY(p), POLYBENCH_ARRAY(q));
 	cl_launch_kernel(nx, ny);
 
 	errcode = clEnqueueReadBuffer(clCommandQue, s_mem_obj, CL_TRUE, 0, NY*sizeof(DATA_TYPE), POLYBENCH_ARRAY(s_outputFromGpu), 0, NULL, NULL);
 	errcode = clEnqueueReadBuffer(clCommandQue, q_mem_obj, CL_TRUE, 0, NX*sizeof(DATA_TYPE), POLYBENCH_ARRAY(q_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");  
 
-	#ifdef RUN_ON_CPU
+	/* Stop and print timer. */
+#if VERBOSE == 1
+	printf("GPU Time in seconds:\n");
+#endif
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
+
+	#if RUN_ON_CPU == 1
 
 		/* Start timer. */
 	  	polybench_start_instruments;

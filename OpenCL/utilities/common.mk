@@ -1,9 +1,25 @@
-OpenCL_SDK=/global/homes/s/sgrauerg/NVIDIA_GPU_Computing_SDK
-INCLUDE=-I${OpenCL_SDK}/OpenCL/common/inc -I${PATH_TO_UTILS}
-LIBPATH=-L${OpenCL_SDK}/OpenCL/common/lib -L${OpenCL_SDK}/shared/lib
+
+OpenCL_INC?=
+OpenCL_LIB?=
+
+INCLUDE=${OpenCL_INC} -I${PATH_TO_UTILS}
+LIBPATH=${OpenCL_LIB}
+
 LIB=-lOpenCL -lm
-all:
-	gcc -O3 ${INCLUDE} ${LIBPATH} ${LIB} ${CFILES} -o ${EXECUTABLE}
+
+DATASET?=-DSTANDARD_DATASET
+DATATYPE?=-DDATA_TYPE=float -DDATA_PRINTF_MODIFIER="\"%0.2f \""
+TIMER?=-DPOLYBENCH_TIME
+
+RUN_ON_CPU?=0
+
+all: ${EXECUTABLE}
+
+${EXECUTABLE}: ${CFILES}
+	gcc -o ${EXECUTABLE} -DRUN_ON_CPU=$(RUN_ON_CPU) $(DATASET) $(DATATYPE) $(TIMER) -O3 ${INCLUDE} ${LIBPATH} ${CFILES} ${LIB}
+
+check: ${EXECUTABLE}
+	./${EXECUTABLE}
 
 clean:
 	rm -f *~ *.exe *.txt

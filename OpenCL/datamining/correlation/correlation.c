@@ -69,7 +69,13 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
-#define RUN_ON_CPU
+#ifndef RUN_ON_CPU
+#define RUN_ON_CPU 1
+#endif
+
+#define KERNEL_FILE "correlation.cl"
+
+#include "ocl_common.c"
 
 
 void compareResults(int m, int n, DATA_TYPE POLYBENCH_2D(symmat, M, N, m, n), DATA_TYPE POLYBENCH_2D(symmat_outputFromGpu, M, N, m, n))
@@ -93,20 +99,6 @@ void compareResults(int m, int n, DATA_TYPE POLYBENCH_2D(symmat, M, N, m, n), DA
 }
 
 
-void read_cl_file()
-{
-	// Load the kernel source code into the array source_str
-	fp = fopen("correlation.cl", "r");
-	if (!fp) {
-		fprintf(stderr, "Failed to load kernel.\n");
-		exit(1);
-	}
-	source_str = (char*)malloc(MAX_SOURCE_SIZE);
-	source_size = fread( source_str, 1, MAX_SOURCE_SIZE, fp);
-	fclose( fp );
-}
-
-
 void init_arrays(int m, int n, DATA_TYPE POLYBENCH_2D(data, M, N, m, n))
 {
 	int i, j;
@@ -118,39 +110,6 @@ void init_arrays(int m, int n, DATA_TYPE POLYBENCH_2D(data, M, N, m, n))
        		data[i][j] = ((DATA_TYPE) i*j)/ M;	
        	}
     	}
-}
-
-
-void cl_initialization()
-{	
-	// Get platform and device information
-	errcode = clGetPlatformIDs(1, &platform_id, &num_platforms);
-	if(errcode == CL_SUCCESS) printf("number of platforms is %d\n",num_platforms);
-	else printf("Error getting platform IDs\n");
-
-	errcode = clGetPlatformInfo(platform_id,CL_PLATFORM_NAME, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("platform name is %s\n",str_temp);
-	else printf("Error getting platform name\n");
-
-	errcode = clGetPlatformInfo(platform_id, CL_PLATFORM_VERSION, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("platform version is %s\n",str_temp);
-	else printf("Error getting platform version\n");
-
-	errcode = clGetDeviceIDs( platform_id, OPENCL_DEVICE_SELECTION, 1, &device_id, &num_devices);
-	if(errcode == CL_SUCCESS) printf("number of devices is %d\n", num_devices);
-	else printf("Error getting device IDs\n");
-
-	errcode = clGetDeviceInfo(device_id,CL_DEVICE_NAME, sizeof(str_temp), str_temp,NULL);
-	if(errcode == CL_SUCCESS) printf("device name is %s\n",str_temp);
-	else printf("Error getting device name\n");
-	
-	// Create an OpenCL context
-	clGPUContext = clCreateContext( NULL, 1, &device_id, NULL, NULL, &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating context\n");
- 
-	//Create a command-queue
-	clCommandQue = clCreateCommandQueue(clGPUContext, device_id, 0, &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating command queue\n");
 }
 
 
@@ -168,33 +127,6 @@ void cl_mem_init(DATA_TYPE POLYBENCH_2D(data,M,N,m,n), DATA_TYPE POLYBENCH_1D(me
 	errcode = clEnqueueWriteBuffer(clCommandQue, stddev_mem_obj, CL_TRUE, 0, sizeof(DATA_TYPE) * M, stddev, 0, NULL, NULL);
 	errcode = clEnqueueWriteBuffer(clCommandQue, mean_mem_obj, CL_TRUE, 0, sizeof(DATA_TYPE) * M, mean, 0, NULL, NULL);
 	if(errcode != CL_SUCCESS)printf("Error in writing buffers\n");
-}
-
-
-void cl_load_prog()
-{
-	// Create a program from the kernel source
-	clProgram = clCreateProgramWithSource(clGPUContext, 1, (const char **)&source_str, (const size_t *)&source_size, &errcode);
-
-	if(errcode != CL_SUCCESS) printf("Error in creating program\n");
-
-	// Build the program
-	errcode = clBuildProgram(clProgram, 1, &device_id, NULL, NULL, NULL);
-	if(errcode != CL_SUCCESS) printf("Error in building program\n");
-		
-	// Create the OpenCL kernel
-	clKernel_mean = clCreateKernel(clProgram, "mean_kernel", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel1\n");
-
-	clKernel_std = clCreateKernel(clProgram, "std_kernel", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel2\n");
-
-	clKernel_reduce = clCreateKernel(clProgram, "reduce_kernel", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel3\n");
-
-	clKernel_corr = clCreateKernel(clProgram, "corr_kernel", &errcode);
-	if(errcode != CL_SUCCESS) printf("Error in creating kernel4\n");
-	clFinish(clCommandQue);
 }
 
 
@@ -227,9 +159,6 @@ void cl_launch_kernel(int m, int n)
 	localWorkSize_Kernel4[1] = DIM_LOCAL_WORK_GROUP_KERNEL_4_Y;
 	globalWorkSize_Kernel4[0] = (size_t)ceil(((float)M) / ((float)DIM_LOCAL_WORK_GROUP_KERNEL_4_X)) * DIM_LOCAL_WORK_GROUP_KERNEL_4_X;
 	globalWorkSize_Kernel4[1] = 1;
-
-	/* Start timer. */
-  	polybench_start_instruments;
 	
 	// Set the arguments of the kernel
 	errcode =  clSetKernelArg(clKernel_mean, 0, sizeof(cl_mem), (void *)&mean_mem_obj);
@@ -289,11 +218,6 @@ void cl_launch_kernel(int m, int n)
 	clEnqueueWriteBuffer(clCommandQue, symmat_mem_obj, CL_TRUE, ((M-1)*M + (M-1))*sizeof(DATA_TYPE), sizeof(DATA_TYPE), &val, 0, NULL, NULL);
 
 	clFinish(clCommandQue);
-
-	/* Stop and print timer. */
-	printf("GPU Time in seconds:\n");
-  	polybench_stop_instruments;
- 	polybench_print_instruments;
 }
 
 
@@ -415,15 +339,40 @@ int main(int argc, char *argv[])
 
 	read_cl_file();
 	cl_initialization();
-	cl_mem_init(POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(mean), POLYBENCH_ARRAY(stddev), POLYBENCH_ARRAY(symmat_outputFromGpu));
 	cl_load_prog();
+		
+	// Create the OpenCL kernel
+	clKernel_mean = clCreateKernel(clProgram, "mean_kernel", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel1\n");
+
+	clKernel_std = clCreateKernel(clProgram, "std_kernel", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel2\n");
+
+	clKernel_reduce = clCreateKernel(clProgram, "reduce_kernel", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel3\n");
+
+	clKernel_corr = clCreateKernel(clProgram, "corr_kernel", &errcode);
+	if(errcode != CL_SUCCESS) printf("Error in creating kernel4\n");
+	clFinish(clCommandQue);
+
+	/* Start timer. */
+  	polybench_start_instruments;
+
+	cl_mem_init(POLYBENCH_ARRAY(data), POLYBENCH_ARRAY(mean), POLYBENCH_ARRAY(stddev), POLYBENCH_ARRAY(symmat_outputFromGpu));
 
 	cl_launch_kernel(m, n);
 
 	errcode = clEnqueueReadBuffer(clCommandQue, symmat_mem_obj, CL_TRUE, 0, M * N * sizeof(DATA_TYPE), POLYBENCH_ARRAY(symmat_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
 
-	#ifdef RUN_ON_CPU
+	/* Stop and print timer. */
+#if VERBOSE == 1
+	printf("GPU Time in seconds:\n");
+#endif
+  	polybench_stop_instruments;
+ 	polybench_print_instruments;
+
+	#if RUN_ON_CPU == 1
 
 		/* Start timer. */
 	  	polybench_start_instruments;
