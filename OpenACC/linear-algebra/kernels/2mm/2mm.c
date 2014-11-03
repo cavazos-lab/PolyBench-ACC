@@ -89,8 +89,8 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
   #pragma acc data copyin(A,B,C) create(tmp) copyout (D)
   {
     #pragma acc parallel present(A,B,tmp) \
-                         num_gangs[0](nj/8) num_gangs[1](ni/8) \
-                         num_workers[0](8) num_workers[1](8)
+                         num_gangs[0](nj/32) num_gangs[1](ni/8) \
+                         num_workers[0](32) num_workers[1](8)
     {
       #pragma acc loop gang[1] worker[1]
       for (i = 0; i < _PB_NI; i++) {
@@ -105,8 +105,8 @@ void kernel_2mm(int ni, int nj, int nk, int nl,
     }
 
     #pragma acc parallel present(C,D,tmp) \
-                         num_gangs[0](ni/8) num_gangs[1](nl/8) \
-                         num_workers[0](8) num_workers[1](8)
+                         num_gangs[0](ni/32) num_gangs[1](nl/8) \
+                         num_workers[0](32) num_workers[1](8)
     {
       #pragma acc loop gang[1] worker[1]
       for (i = 0; i < _PB_NI; i++) {

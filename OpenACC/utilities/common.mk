@@ -11,15 +11,13 @@ DEP_FLAG    := -MM
 
 ACC_EXEC_ENV?=ACC_PROFILING_DB=profile.db
 
-DATASET?=-DLARGE_DATASET
+DATASET?=-DSTANDARD_DATASET
 DATATYPE?=-DDATA_TYPE=float -DDATA_PRINTF_MODIFIER="\"%0.2f \""
 TIMER?=-DPOLYBENCH_TIME
 
-.PHONY: all exe clean veryclean
+.PHONY: all clean veryclean
 
-all : exe
-
-exe : $(EXE)
+all : $(BENCHMARK)-acc
 
 $(OBJ) : $(SRC)
 	$(ACC) $(CFLAGS) $(DATASET) $(DATATYPE) $(TIMER) $(ACCFLAGS) $(ACC_INC_PATH) $(INCPATHS) $^
@@ -30,7 +28,10 @@ $(BENCHMARK)-acc: $(OBJ) $(BENCHMARK)-data.c $(UTIL_DIR)/polybench.c
 $(BENCHMARK)-seq: $(SRC) $(UTIL_DIR)/polybench.c
 	$(CC) -o $@ $(CFLAGS) $(DATASET) $(DATATYPE) $(TIMER) $(INCPATHS) $^ -lm
 
-check: exe
+check: $(BENCHMARK)-acc
+	$(ACC_EXEC_ENV) ./$(BENCHMARK)-acc
+
+compare: $(BENCHMARK)-seq $(BENCHMARK)-acc
 	./$(BENCHMARK)-seq
 	$(ACC_EXEC_ENV) ./$(BENCHMARK)-acc
 

@@ -86,8 +86,8 @@ void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
   {
     /* E := A*B */
     #pragma acc parallel present(E,A,B) \
-                         num_gangs[0](nj/8) num_gangs[1](ni/8) \
-                         num_workers[0](8) num_workers[1](8)
+                         num_gangs[0](nj/32) num_gangs[1](ni/8) \
+                         num_workers[0](32) num_workers[1](8)
     {
       #pragma acc loop gang[1] worker[1]
       for (i = 0; i < _PB_NI; i++) {
@@ -102,8 +102,8 @@ void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
     }
     /* F := C*D */
     #pragma acc parallel present(F,C,D) \
-                         num_gangs[0](nl/8) num_gangs[1](nj/8) \
-                         num_workers[0](8) num_workers[1](8)
+                         num_gangs[0](nl/32) num_gangs[1](nj/8) \
+                         num_workers[0](32) num_workers[1](8)
     {
       #pragma acc loop gang[1] worker[1]
       for (i = 0; i < _PB_NJ; i++) {
@@ -118,8 +118,8 @@ void kernel_3mm(int ni, int nj, int nk, int nl, int nm,
     }
     /* G := E*F */
     #pragma acc parallel present(G,E,F) \
-                         num_gangs[0](nl/8) num_gangs[1](ni/8) \
-                         num_workers[0](8) num_workers[1](8)
+                         num_gangs[0](nl/32) num_gangs[1](ni/8) \
+                         num_workers[0](32) num_workers[1](8)
     {
       #pragma acc loop gang[1] worker[1]
       for (i = 0; i < _PB_NI; i++) {
