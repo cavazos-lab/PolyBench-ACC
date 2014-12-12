@@ -1,99 +1,260 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta name="description" content="Polybench/ACC">
+  <meta name="keywords" content="">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width">
-  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
-  <title>PolyBench/ACC</title>
-  <link rel="stylesheet" type="text/css" href="style.css">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <title>Polybench/ACC</title>
+  <link href="css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/icomoon.css" rel="stylesheet">
+  <link href="css/scrolling-nav.css" rel="stylesheet">
+  <link href="css/custom.css" rel="stylesheet">
+  <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+  <![endif]-->
 </head>
-<body>
-  <div id="header" class="center">
-    <div class="maxwidth">
-      <div class="widthfix" id="headerimg">
+<body id="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
+  <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+      <div class="navbar-header page-scroll">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <div class="anim">
+	  <!-- CONFIGURE css/custom.css to point to the right image -->
+	  <a href="#intro" class="page-scroll">
+            <span class="navbar-brand page-scroll"><span id="headerimg"></span></span>
+            <span class="navbar-brand page-scroll"><span class="page-scroll text-primary">Polybench/ACC</span></span>
+	  </a>
+        </div>
+      </div>
+      <div class="navbar-collapse navbar-ex1-collapse collapse anim" style="height: 1px;">
+        <ul class="nav navbar-nav">
+          <li class="hidden active">
+            <a class="page-scroll" href="#page-top"></a>
+          </li>
+          <li class="">
+            <a class="page-scroll" href="#download"><span>&nbsp;Download</span></a>
+          </li>
+          <li class="">
+            <a class="page-scroll" href="#contributors"><span>&nbsp;Contributors</span></a>
+          </li>
+          <li class="">
+            <a class="page-scroll" href="#acknowledgements"><span>&nbsp;Acknowledgements</span></a>
+          </li>
+        </ul>
       </div>
     </div>
-  </div>
-  <div class="center">
-    <div class="maxwidth">
-      <div id="pagecontent" class="widthfix">
-        <h1>PolyBench/ACC</h1>
-        <h4>The Polyhedral Benchmark Suite Targeting Multicore CPUs, GPUs, and Accelerators</h4>
-        <p><a href="http://www.cs.ucla.edu/~pouchet/software/polybench/">PolyBench</a> is a collection of benchmarks containing static control parts. The purpose is to uniformize the execution and monitoring of kernels, typically used in past and current publications. PolyBench features include:</p>
-        <ul>
-          <li>A single file, tunable at compile-time, used for the kernel instrumentation. It performs extra operations such as cache flushing before the kernel execution, and can set real-time scheduling to prevent OS interference.</li>
-          <li>Non-null data initialization, and live-out data dump.</li>
-          <li>Syntactic constructs to prevent any dead code elimination on the kernel.</li>
-          <li>Parametric loop bounds in the kernels, for general-purpose implementation.</li>
-          <li>Clear kernel marking, using <code>#pragma scop</code> and <code>#pragma endscop</code> delimiters.</li>
-        </ul>
-	<p>We have modified the original Polybench Suite created by <a href="https://www.cs.ucla.edu/~pouchet/">Louis-Noël Pouchet</a> to run on GPUs and accelerators by using different programming languages.
-        <h3>Get The Code</h3>
-        <p>All of the source code is available on GitHub. We have a few options available for download.</p>
-        <p><a href="https://github.com/cavazos-lab/PolyBench-ACC">GitHub Repository</a></p>
-        <p><a href="https://github.com/cavazos-lab/PolyBench-ACC/tarball/master">Download Tarball</a></p>
-        <p><a href="https://github.com/cavazos-lab/PolyBench-ACC/tarball/master">Download ZIP</a></p>
-        <h2>Benchmarks</h2>
-        <ul>
-          <li><strong>2mm</strong> --  2 Matrix Multiplications (D=A.B; E=C.D)</li>
-          <li><strong>3mm</strong> -- 3 Matrix Multiplications (E=A.B; F=C.D; G=E.F)</li>
-          <li><strong>adi</strong> -- Alternating Direction Implicit solver</li>
-          <li><strong>atax</strong> --  Matrix Transpose and Vector Multiplication</li>
-          <li><strong>bicg</strong> --  BiCG Sub Kernel of BiCGStab Linear Solver</li>
-          <li><strong>cholesky</strong> --  Cholesky Decomposition</li>
-          <li><strong>correlation</strong> -- Correlation Computation</li>
-          <li><strong>covariance</strong> --  Covariance Computation</li>
-          <li><strong>doitgen</strong> -- Multiresolution analysis kernel (MADNESS)</li>
-          <li><strong>durbin</strong> --  Toeplitz system solver</li>
-          <li><strong>dynprog</strong> -- Dynamic programming (2D)</li>
-          <li><strong>fdtd-2d</strong> -- 2-D Finite Different Time Domain Kernel</li>
-          <li><strong>fdtd-apml</strong> -- FDTD using Anisotropic Perfectly Matched Layer</li>
-          <li><strong>gauss-filter</strong> --  Gaussian Filter</li>
-          <li><strong>gemm</strong> --  Matrix-multiply C=alpha.A.B+beta.C</li>
-          <li><strong>gemver</strong> --  Vector Multiplication and Matrix Addition</li>
-          <li><strong>gesummv</strong> -- Scalar, Vector and Matrix Multiplication</li>
-          <li><strong>gramschmidt</strong> -- Gram-Schmidt decomposition</li>
-          <li><strong>jacobi-1D</strong> -- 1-D Jacobi stencil computation</li>
-          <li><strong>jacobi-2D</strong> -- 2-D Jacobi stencil computation</li>
-          <li><strong>lu</strong> --  LU decomposition</li>
-          <li><strong>ludcmp</strong> --  LU decomposition</li>
-          <li><strong>mvt</strong> -- Matrix Vector Product and Transpose</li>
-          <li><strong>reg-detect</strong> --  2-D Image processing</li>
-          <li><strong>seidel</strong> --  2-D Seidel stencil computation</li>
-          <li><strong>symm</strong> --  Symmetric matrix-multiply</li>
-          <li><strong>syr2k</strong> -- Symmetric rank-2k operations</li>
-          <li><strong>syrk</strong> --  Symmetric rank-k operations</li>
-          <li><strong>trisolv</strong> -- Triangular solver</li>
-          <li><strong>trmm</strong> --  Triangular matrix-multiply</li>
-        </ul>
-        <h2>Target Languages</h2>
-        <ul>
-          <li>CUDA</li>
-          <li>OpenCL</li>
-          <li>HMPP</li>
-          <li>OpenACC</li>
-          <li>OpenMP</li>
-        </ul>
-        <h2>Related Research</h2>
-	<p>Any work that uses these codes should cite the following paper:</p>
-        <p>S. Grauer-Gray, L. Xu, R. Searles, S. Ayalasomayajula, J. Cavazos. Auto-tuning a High-Level Language Targeted to GPU Codes. In  Proceedings of Innovative Parallel Computing (InPar) 2012.</p>
-        <p>This paper and the corresponding presentation are available for download.</p>
-        <p><a href="Autotuning.a.High-Level.Language.Targeted.to.GPU.Codes-paper.pdf">Download Paper</a></p>
-        <p><a href="Autotuning.a.High-Level.Language.Targeted.to.GPU.Codes-presentation.pdf">Download Presentation</a></p>
-        <h3>Contributors</h3>
-        <ul>
-          <li><a href="https://www.eecis.udel.edu/~cavazos">John Cavazos</a>, Principle Investigator</li>
-          <li><a href="https://www.eecis.udel.edu/~grauerg">Scott Grauer-Gray</a></li>
-          <li><a href="https://www.eecis.udel.edu/~searles">Robert Searles</a></li>
-          <li><a href="https://www.eecis.udel.edu/~wkillian">William Killian</a></li>
-          <li><a href="https://www.eecis.udel.edu/~lxu">Lifan Xu</a></li>
-          <li>Sudhee Ayalasomayajula</a></li>
-        </ul>
-        <h4 id="acknowledgements">Acknowledgements</h4>
-        <p>This work was funded in part by the U.S. National Science Foundation through the NSF Career award 0953667 and the Defense Advanced Research Projects Agency through the DARPA Computer Science Study Group (CSSG).</p>
-        <p>&copy; 2012-2014 University of Delaware</p>
+  </nav>
+  <section id="intro" class="section intro-section">
+    <div class="container">
+      <div class="row">
+        <div class="col-xs-12">
+	  <h1><small>The Polyhedral Benchmark Suite Targeting Multicore CPUs, GPUs, and Accelerators</small></h1>
+          <p class="lead"><a href="http://www.cs.ucla.edu/~pouchet/software/polybench/">PolyBench</a> is a collection of benchmarks containing static control parts. The purpose is to uniformize the execution and monitoring of kernels, typically used in past and current publications.</p>
+	  <p class="lead">We have modified the original Polybench Suite to run on GPUs and accelerators by using different programming languages.</p>
+	  <h3>Features:</h3>
+          <ul>
+            <li>A single file, tunable at compile-time, used for the kernel instrumentation.</li>
+            <li>Non-null data initialization, and live-out data dump.</li>
+            <li>Syntactic constructs to prevent any dead code elimination on the kernel.</li>
+            <li>Parametric loop bounds in the kernels, for general-purpose implementation.</li>
+            <li>Clear kernel marking, using <code>#pragma scop</code> and <code>#pragma endscop</code> delimiters.</li>
+          </ul>
+	</div>
+      </div>
+      <div class="row">
+	<div class="col-xs-12 col-sm-12 col-md-8">
+	  <h3 class="text-center">Benchmarks</h3>
+	</div>
+      </div>
+      <div class="row">
+	<div class="col-xs-12 col-sm-6 col-md-4">
+	  <div class="panel panel-default">
+	    <div class="panel-heading"><strong>linear-algebra/kernels</strong></div>
+	    <ul class="list-group">
+	      <li class="list-group-item">2mm</li>
+	      <li class="list-group-item">3mm</li>
+	      <li class="list-group-item">atax</li>
+	      <li class="list-group-item">bicg</li>
+	      <li class="list-group-item">cholesky</li>
+	      <li class="list-group-item">doitgen</li>
+	      <li class="list-group-item">gemm</li>
+	      <li class="list-group-item">gemver</li>
+	      <li class="list-group-item">gesummv</li>
+	      <li class="list-group-item">mvt</li>
+	      <li class="list-group-item">symm</li>
+	      <li class="list-group-item">syr2k</li>
+	      <li class="list-group-item">syrk</li>
+	      <li class="list-group-item">trisolv</li>
+	      <li class="list-group-item">trmm</li>
+	    </ul>
+	  </div>
+	</div>
+	<div class="col-xs-12 col-sm-6 col-md-4">
+	  <div class="panel panel-default">
+	    <div class="panel-heading"><strong>linear-algebra/solvers</strong></div>
+	    <ul class="list-group">
+	      <li class="list-group-item">durbin</li>
+	      <li class="list-group-item">dynprog</li>
+	      <li class="list-group-item">gramschmidt</li>
+	      <li class="list-group-item">lu</li>
+	      <li class="list-group-item">ludcmp</li>
+	    </ul>
+	  </div>
+	  <div class="panel panel-default">
+	    <div class="panel-heading"><strong>datamining</strong></div>
+	    <ul class="list-group">
+	      <li class="list-group-item">correlation</li>
+	      <li class="list-group-item">covariance</li>
+	    </ul>
+	  </div>
+	  <div class="panel panel-default">
+	    <div class="panel-heading"><strong>stencils</strong></div>
+	    <ul class="list-group">
+	      <li class="list-group-item">adi</li>
+	      <li class="list-group-item">convolution-2d</li>
+	      <li class="list-group-item">convolution-3d</li>
+	      <li class="list-group-item">fdtd-2d</li>
+	      <li class="list-group-item">jacobi-1d-imper</li>
+	      <li class="list-group-item">jacobi-2d-imper</li>
+	      <li class="list-group-item">seidel-2d</li>
+	    </ul>
+	  </div>
+	</div>
+	<div class="col-xs-12 col-md-4">
+	  <div class="panel panel-info">
+	    <div class="panel-heading"><strong>Languages</strong></div>
+	    <ul class="list-group">
+              <li class="list-group-item">CUDA</li>
+              <li class="list-group-item">OpenCL</li>
+              <li class="list-group-item">HMPP</li>
+              <li class="list-group-item">OpenACC</li>
+              <li class="list-group-item">OpenMP</li>
+            </ul>
+	  </div>
+	</div>
       </div>
     </div>
-  </div>
+  </section>
+  <section id="download" class="section download-section">
+    <div class="container">
+      <h1 class="text-center text-primary">Download</h1>
+      <div class="row">
+        <div class="well well-lg text-center">
+          <h2 class="icon-github-logo"></h2>
+          <p>
+	    <a href="//www.github.com/cavazos-lab/PolyBench-ACC" class="btn btn-primary btn-lg" role="button"><span class="icon-github" style="vertical-align:baseline"></span>&nbsp;PolyBench/ACC</a>
+	  </p>
+	  <p class="lead">Direct Links</p>
+	  <div class="row text-center btn-group">
+            <a role="button" class="btn btn-default" href="https://github.com/cavazos-lab/PolyBench-ACC/tarball/master">Download Tarball</a><a role="button" class="btn btn-default" href="https://github.com/cavazos-lab/PolyBench-ACC/archive/master.zip">Download ZIP</a>
+	  </div>
+	</div>
+      </div>
+    </div>
+  </section>
+  
+  <section id="contributors" class="section contributors-sections">
+    <div class="container">
+      <h1 class="text-center text-primary">Contributors</h1>
+      <div class="row">
+	<div class="col-xs-12 col-sm-6">
+	  <div class="panel panel-default">
+	    <div class="panel-heading">
+	      <strong>Related Research</strong>
+	    </div>
+	    <div class="panel-body">
+	      <p>Any work that uses these codes should cite the following paper:</p>
+              <p>S. Grauer-Gray, L. Xu, R. Searles, S. Ayalasomayajula, J. Cavazos. <em>&quot;Auto-tuning a High-Level Language Targeted to GPU Codes.&quot;</em> In  Proceedings of Innovative Parallel Computing (InPar) 2012.</p>
+	    </div>
+	    <div class="panel-footer">
+	      <div class="text-center">
+		<div class="btn-group">
+		  <a role="button" class="btn btn-default" href="resources/Autotuning.a.High-Level.Language.Targeted.to.GPU.Codes-paper.pdf">Paper</a>
+		  <a role="button" class="btn btn-default" href="resources/Autotuning.a.High-Level.Language.Targeted.to.GPU.Codes-presentation.pdf">Presentation</a>
+		</div>
+	      </div>
+	    </div>
+	  </div>
+	</div>
+	<div class="col-xs-12 col-sm-6">
+	  <div class="panel panel-default">
+	    <div class="panel-heading">
+	      <strong>Individuals</strong>
+	    </div>
+	    <ul class="list-group">
+	      <li class="list-group-item"><a href="https://www.eecis.udel.edu/~cavazos">John Cavazos</a>, Principle Investigator</li>
+              <li class="list-group-item"><a href="https://www.eecis.udel.edu/~grauerg">Scott Grauer-Gray</a></li>
+              <li class="list-group-item"><a href="https://www.eecis.udel.edu/~searles">Robert Searles</a></li>
+              <li class="list-group-item"><a href="https://www.eecis.udel.edu/~wkillian">William Killian</a></li>
+	      <li class="list-group-item"><a href="https://www.eecis.udel.edu/~lxu">Lifan Xu</a></li>
+	      <li class="list-group-item">Sudhee Ayalasomayajula</li>
+	    </ul>
+	  </div>
+	</div>
+      </div>
+    </div>
+  </section>
+  <section id="acknowledgement" class="section acknowledgement-section">
+    <div class="container">
+      <h1 class="text-center text-primary">Acknowledgements</h1>
+      <div class="text-center row">
+	<p>This work derives from the original Polybench Suite created by <a href="https://www.cs.ucla.edu/~pouchet/">Louis-Noël Pouchet</a>.<p>
+      </div>
+      <div class="row">
+        <div class="col-xs-12">
+	  <p class="lead text-center">This work was funded in part by:</p>
+	  <div class="row">
+	    <div class="col-xs-4 vcenter text-right">
+	      <img src="img/nsf.png">
+	    </div><!--
+	    --><div class="col-xs-8 vcenter">
+	      <p>U.S. National Science Foundation through the NSF Career award 0953667</p>
+	    </div>
+	  </div>
+	  <p class="lead text-center">and</p>
+	  <div class="row">
+	    <div class="col-xs-4 vcenter text-right">
+	      <img src="img/darpa.png">
+	    </div><!--
+	    --><div class="col-xs-8 vcenter">
+	      <p>DARPA Computer Science Study Group (CSSG)</p>
+	    </div>
+	  </div>
+	  <p><br><br></p>
+	</div>
+      </div>
+    </div>
+  </section>
+  <section id="footer" class="section footer-section">
+    <div class="container">
+      <div class="row">
+	<div class="col-xs-12">
+	  <p class="lead text-center text-uppercase">&copy;2014 University of Delaware</p>
+	</div>
+      </div>
+      <div class="row">
+	<div class="col-sm-6 col-xs-12">
+	  <p class="small text-center text-uppercase">Powered by <a href="//www.getbootstrap.com">Bootstrap</a></p>
+	</div>
+	<div class="col-sm-6 col-xs-12">
+	  <p class="small text-center text-uppercase">Icons by <a href="//glyphicons.com">Glyphicons</a>.</p>
+	</div>
+    </div>
+  </section>
+  <script src="js/jquery-1.11.0.js"></script>
+  <script src="js/bootstrap.min.js"></script>
+  <script src="js/jquery.easing.min.js"></script>
+  <script src="js/scrolling-nav.js"></script>
 </body>
 </html>

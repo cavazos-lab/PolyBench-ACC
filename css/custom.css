@@ -1,0 +1,26 @@
+#headerimg {
+    display: inline-block;
+    margin-top: -0.5em;
+    margin-right: -0.5em;
+    width: 2em;
+    height: 2em;
+    border-radius: 2em;
+    vertical-align: middle;
+    background-image: url('../img/ud-seal.jpg' );
+    background-size: cover;
+    border: none;
+}
+
+.top-nav-collapse #headerimg {
+    margin-top: -0.5em;
+    width: 2em;
+    height: 2em;
+    border-radius: 2em;
+}
+
+
+.vcenter {
+    display: inline-block;
+    vertical-align: middle;
+    float: none;
+}
