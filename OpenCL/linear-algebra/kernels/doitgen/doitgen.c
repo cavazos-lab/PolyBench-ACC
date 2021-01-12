@@ -39,7 +39,6 @@
 
 #define GPU_DEVICE 0
 
-#define RUN_ON_CPU
 
 #define MAX_SOURCE_SIZE (0x100000)
 
@@ -352,7 +351,7 @@ int main(int argc, char *argv[])
 	errcode = clEnqueueReadBuffer(clCommandQue, c_mem_obj, CL_TRUE, 0, NR * NQ * NP * sizeof(DATA_TYPE), sum_outputFromGpu, 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
 
-	#ifdef RUN_ON_CPU
+	#if RUN_ON_CPU
 
 		/* Start timer. */
 	  	polybench_start_instruments;

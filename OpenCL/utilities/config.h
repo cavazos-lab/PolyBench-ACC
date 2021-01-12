@@ -1,0 +1,12 @@
+#ifndef POLYBENCH_ACC_CONFIG_H
+#define POLYBENCH_ACC_CONFIG_H
+
+#ifndef OPENCL_DEVICE_SELECTION
+#define OPENCL_DEVICE_SELECTION CL_DEVICE_TYPE_GPU
+#endif
+
+#ifndef RUN_ON_CPU
+#define RUN_ON_CPU (1)
+#endif
+
+#endif

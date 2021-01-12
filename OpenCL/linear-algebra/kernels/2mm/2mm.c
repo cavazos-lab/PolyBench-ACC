@@ -23,8 +23,6 @@
 
 #define POLYBENCH_TIME 1
 
-//select the OpenCL device to use (can be GPU, CPU, or Accelerator such as Intel Xeon Phi)
-#define OPENCL_DEVICE_SELECTION CL_DEVICE_TYPE_GPU
 
 #include "2mm.h"
 #include <polybench.h>
@@ -65,7 +63,6 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
-#define RUN_ON_CPU
 
 
 void compareResults(int ni, int nl, DATA_TYPE POLYBENCH_2D(D, NI, NL, ni, nl), DATA_TYPE POLYBENCH_2D(D_outputFromGpu, NI, NL, ni, nl))
@@ -379,7 +376,7 @@ int main(int argc, char *argv[])
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
 
 
-	#ifdef RUN_ON_CPU
+	#if RUN_ON_CPU
 
 		/* Start timer. */
 	  	polybench_start_instruments;
