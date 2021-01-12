@@ -22,8 +22,6 @@
 
 #define POLYBENCH_TIME 1
 
-//select the OpenCL device to use (can be GPU, CPU, or Accelerator such as Intel Xeon Phi)
-#define OPENCL_DEVICE_SELECTION CL_DEVICE_TYPE_GPU
 
 #include "2DConvolution.h"
 #include <polybench.h>
@@ -59,7 +57,6 @@ FILE *fp;
 char *source_str;
 size_t source_size;
 
-#define RUN_ON_CPU
 
 
 void compareResults(int ni, int nj, DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B_outputFromGpu, NI, NJ, ni, nj))
@@ -282,7 +279,7 @@ int main(int argc, char *argv[])
 	errcode = clEnqueueReadBuffer(clCommandQue, b_mem_obj, CL_TRUE, 0, NI*NJ*sizeof(DATA_TYPE), POLYBENCH_ARRAY(B_outputFromGpu), 0, NULL, NULL);
 	if(errcode != CL_SUCCESS) printf("Error in reading GPU mem\n");
 
-	#ifdef RUN_ON_CPU
+	#if RUN_ON_CPU
 
 		/* Start timer. */
   		polybench_start_instruments;
