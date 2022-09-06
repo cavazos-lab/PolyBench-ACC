@@ -298,6 +298,8 @@ void cl_clean_up()
 	errcode = clFlush(clCommandQue);
 	errcode = clFinish(clCommandQue);
 	errcode = clReleaseKernel(clKernel1);
+	errcode = clReleaseKernel(clKernel2);
+	errcode = clReleaseKernel(clKernel3);
 	errcode = clReleaseProgram(clProgram);
 	errcode = clReleaseMemObject(a_mem_obj);
 	errcode = clReleaseMemObject(u1_mem_obj);
