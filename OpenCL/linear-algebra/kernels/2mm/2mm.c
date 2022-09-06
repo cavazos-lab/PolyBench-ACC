@@ -102,7 +102,7 @@ void read_cl_file()
 
 void init_array(int ni, int nj, int nk, int nl, DATA_TYPE *alpha, DATA_TYPE *beta, DATA_TYPE POLYBENCH_2D(A, NI, NK, ni, nk), 
 		DATA_TYPE POLYBENCH_2D(B, NK, NJ, nk, nj), DATA_TYPE POLYBENCH_2D(C, NL, NJ, nl, nj), 
-		DATA_TYPE POLYBENCH_2D(D, NI, NL, ni, nl))
+		DATA_TYPE POLYBENCH_2D(D, NI, NL, ni, nl), DATA_TYPE POLYBENCH_2D(D_outputFromGpu, NI, NL, ni, nl))
 {
 	int i, j;
 
@@ -138,6 +138,7 @@ void init_array(int ni, int nj, int nk, int nl, DATA_TYPE *alpha, DATA_TYPE *bet
 		for (j = 0; j < nl; j++)
 		{
 			D[i][j] = ((DATA_TYPE) i*(j+2)) / NK;	
+			D_outputFromGpu[i][j] = ((DATA_TYPE) i*(j+2)) / NK;
 		}
 	}
 }
@@ -363,7 +364,7 @@ int main(int argc, char *argv[])
 	POLYBENCH_2D_ARRAY_DECL(D_outputFromGpu,DATA_TYPE,NI,NL,ni,nl);
 	
 	/* Initialize array(s). */
-  	init_array(ni, nj, nk, nl, &alpha, &beta, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(D));
+  	init_array(ni, nj, nk, nl, &alpha, &beta, POLYBENCH_ARRAY(A), POLYBENCH_ARRAY(B), POLYBENCH_ARRAY(C), POLYBENCH_ARRAY(D), POLYBENCH_ARRAY(D_outputFromGpu));
 
 	read_cl_file();
 	cl_initialization();
