@@ -253,6 +253,8 @@ void cl_clean_up()
 	errcode = clReleaseMemObject(a_mem_obj);
 	errcode = clReleaseMemObject(b_mem_obj);
 	errcode = clReleaseMemObject(x_mem_obj);
+	errcode = clReleaseMemObject(y_mem_obj);
+	errcode = clReleaseMemObject(tmp_mem_obj);
 	errcode = clReleaseCommandQueue(clCommandQue);
 	errcode = clReleaseContext(clGPUContext);
 	if(errcode != CL_SUCCESS) printf("Error in cleanup\n");
