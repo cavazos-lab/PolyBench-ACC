@@ -241,6 +241,7 @@ void cl_clean_up()
 	errcode = clReleaseKernel(clKernel1);
 	errcode = clReleaseProgram(clProgram);
 	errcode = clReleaseMemObject(a_mem_obj);
+	errcode = clReleaseMemObject(b_mem_obj);
 	errcode = clReleaseMemObject(c_mem_obj);
 	errcode = clReleaseCommandQueue(clCommandQue);
 	errcode = clReleaseContext(clGPUContext);

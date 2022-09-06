@@ -267,13 +267,13 @@ void cl_clean_up()
 	errcode = clFinish(clCommandQue);
 	errcode = clReleaseKernel(clKernel_reduce);
 	errcode = clReleaseKernel(clKernel_mean);
-	errcode = clReleaseKernel(clKernel_std);
+	//errcode = clReleaseKernel(clKernel_std);
 	errcode = clReleaseKernel(clKernel_covar);
 	errcode = clReleaseProgram(clProgram);
 	errcode = clReleaseMemObject(symmat_mem_obj);
 	errcode = clReleaseMemObject(data_mem_obj);
 	errcode = clReleaseMemObject(mean_mem_obj);
-	errcode = clReleaseMemObject(stddev_mem_obj);
+	//errcode = clReleaseMemObject(stddev_mem_obj);
 	errcode = clReleaseCommandQueue(clCommandQue);
 	errcode = clReleaseContext(clGPUContext);
 	if(errcode != CL_SUCCESS) printf("Error in cleanup\n");
