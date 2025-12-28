@@ -153,7 +153,7 @@ void syrkCuda(int ni, int nj, DATA_TYPE alpha, DATA_TYPE beta, DATA_TYPE POLYBEN
   	polybench_start_instruments;
 
 	syrk_kernel<<<grid,block>>>(ni, nj, alpha, beta, A_gpu,C_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");

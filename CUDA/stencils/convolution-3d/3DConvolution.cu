@@ -159,7 +159,7 @@ void convolution3DCuda(int ni, int nj, int nk, DATA_TYPE POLYBENCH_3D(A, NI, NJ,
 		convolution3D_kernel<<< grid, block >>>(ni, nj, nk, A_gpu, B_gpu, i);
 	}
 
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	printf("GPU Time in seconds:\n");
   	polybench_stop_instruments;
  	polybench_print_instruments;

@@ -143,9 +143,9 @@ void runJacobi2DCUDA(int tsteps, int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_
 	for (int t = 0; t < _PB_TSTEPS; t++)
 	{
 		runJacobiCUDA_kernel1<<<grid,block>>>(n, Agpu, Bgpu);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 		runJacobiCUDA_kernel2<<<grid,block>>>(n, Agpu, Bgpu);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 	}
 
 	/* Stop and print timer. */

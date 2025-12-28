@@ -160,7 +160,7 @@ void mvtCuda(int n, DATA_TYPE POLYBENCH_2D(a, N, N, n, n), DATA_TYPE POLYBENCH_1
 	
 	mvt_kernel1<<<grid,block>>>(n, a_gpu,x1_gpu,y_1_gpu);
 	mvt_kernel2<<<grid,block>>>(n, a_gpu,x2_gpu,y_2_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");

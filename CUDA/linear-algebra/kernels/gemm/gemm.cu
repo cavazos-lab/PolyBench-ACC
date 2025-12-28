@@ -155,7 +155,7 @@ void gemmCuda(int ni, int nj, int nk, DATA_TYPE alpha, DATA_TYPE beta, DATA_TYPE
   	polybench_start_instruments;
 
 	gemm_kernel<<< grid, block >>>(ni, nj, nk, alpha, beta, A_gpu, B_gpu, C_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");

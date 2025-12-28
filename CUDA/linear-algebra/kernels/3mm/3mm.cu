@@ -246,11 +246,11 @@ void mm3Cuda(int ni, int nj, int nk, int nl, int nm,
   	polybench_start_instruments;
 
 	mm3_kernel1<<<grid1,block>>>(ni, nj, nk, nl, nm, A_gpu, B_gpu, E_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	mm3_kernel2<<<grid2,block>>>(ni, nj, nk, nl, nm, C_gpu, D_gpu, F_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	mm3_kernel3<<<grid3,block>>>(ni, nj, nk, nl, nm, E_gpu, F_gpu, G_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");

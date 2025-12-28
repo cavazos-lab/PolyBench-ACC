@@ -229,11 +229,11 @@ void gemverCuda(int n, DATA_TYPE alpha, DATA_TYPE beta,
   	polybench_start_instruments;
 
 	gemver_kernel1<<< grid1, block1 >>>(n, alpha, beta, A_gpu,v1_gpu,v2_gpu, u1_gpu, u2_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	gemver_kernel2<<< grid2, block2 >>>(n, alpha, beta, A_gpu,x_gpu,y_gpu, z_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	gemver_kernel3<<< grid3, block3 >>>(n, alpha, beta, A_gpu,x_gpu,w_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");

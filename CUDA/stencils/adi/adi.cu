@@ -239,25 +239,25 @@ void adiCuda(int tsteps, int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POL
 	{
 		
 		adi_kernel1<<<grid1, block1>>>(n, A_gpu, B_gpu, X_gpu);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 		adi_kernel2<<<grid1, block1>>>(n, A_gpu, B_gpu, X_gpu);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 		adi_kernel3<<<grid1, block1>>>(n, A_gpu, B_gpu, X_gpu);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 	
 		for (int i1 = 1; i1 < _PB_N; i1++)
 		{
 			adi_kernel4<<<grid1, block1>>>(n, A_gpu, B_gpu, X_gpu, i1);
-			cudaThreadSynchronize();
+			cudaDeviceSynchronize();
 		}
 
 		adi_kernel5<<<grid1, block1>>>(n, A_gpu, B_gpu, X_gpu);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 		
 		for (int i1 = 0; i1 < _PB_N-2; i1++)
 		{
 			adi_kernel6<<<grid1, block1>>>(n, A_gpu, B_gpu, X_gpu, i1);
-			cudaThreadSynchronize();
+			cudaDeviceSynchronize();
 		}
 	}
 

@@ -161,9 +161,9 @@ void ataxGpu(int nx, int ny, DATA_TYPE POLYBENCH_2D(A, NX, NY,nx,ny), DATA_TYPE 
   	polybench_start_instruments;
 
 	atax_kernel1<<< grid1, block >>>(nx, ny, A_gpu,x_gpu,tmp_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	atax_kernel2<<< grid2, block >>>(nx, ny, A_gpu,y_gpu,tmp_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");

@@ -196,11 +196,11 @@ void covarianceCuda(int m, int n, DATA_TYPE POLYBENCH_2D(data,M,N,m,n), DATA_TYP
   	polybench_start_instruments;
 
 	mean_kernel<<<grid1, block1>>>(m,n,mean_gpu,data_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	reduce_kernel<<<grid2, block2>>>(m,n,mean_gpu,data_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	covar_kernel<<<grid3, block3>>>(m,n,symmat_gpu,data_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");
