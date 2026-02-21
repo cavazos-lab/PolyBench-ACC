@@ -17,7 +17,6 @@
 #include <string.h>
 #include <cuda.h>
 
-#define POLYBENCH_TIME 1
 
 #include "2DConvolution.cuh"
 #include <polybench.h>
@@ -28,7 +27,6 @@
 
 #define GPU_DEVICE 0
 
-#define RUN_ON_CPU
 
 
 void conv2D(int ni, int nj, DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj), DATA_TYPE POLYBENCH_2D(B, NI, NJ, ni, nj))
@@ -136,7 +134,7 @@ void convolution2DCuda(int ni, int nj, DATA_TYPE POLYBENCH_2D(A, NI, NJ, ni, nj)
   	polybench_start_instruments;
 
 	convolution2D_kernel <<< grid,block >>> (ni, nj, A_gpu,B_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");

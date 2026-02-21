@@ -16,7 +16,6 @@
 #include <sys/time.h>
 #include <cuda.h>
 
-#define POLYBENCH_TIME 1
 
 #include "syr2k.cuh"
 #include <polybench.h>
@@ -27,7 +26,6 @@
 
 #define GPU_DEVICE 0
 
-#define RUN_ON_CPU
 
 
 void init_arrays(int ni, int nj,
@@ -163,7 +161,7 @@ void syr2kCuda(int ni, int nj, DATA_TYPE alpha, DATA_TYPE beta, DATA_TYPE POLYBE
   	polybench_start_instruments;
 
 	syr2k_kernel<<<grid,block>>>(ni, nj, alpha, beta, A_gpu, B_gpu, C_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");

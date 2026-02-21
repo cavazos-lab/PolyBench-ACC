@@ -17,7 +17,6 @@
 #include <string.h>
 #include <cuda.h>
 
-#define POLYBENCH_TIME 1
 
 #include "doitgen.cuh"
 #include <polybench.h>
@@ -28,7 +27,6 @@
 
 #define GPU_DEVICE 0
 
-#define RUN_ON_CPU
 
 
 
@@ -164,9 +162,9 @@ void doitgenCuda(int nr, int nq, int np,
 	for (int r = 0; r < nr; r++)
 	{
 		doitgen_kernel1 <<<grid, block>>> (nr, nq, np, sumGpu, AGpu, C4Gpu, r);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 		doitgen_kernel2 <<<grid, block>>> (nr, nq, np, sumGpu, AGpu, C4Gpu, r);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 	}
 
 	/* Stop and print timer. */

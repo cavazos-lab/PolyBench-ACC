@@ -17,7 +17,6 @@
 #include <stdarg.h>
 #include <math.h>
 
-#define POLYBENCH_TIME 1
 
 #include "jacobi1D.cuh"
 #include <polybench.h>
@@ -26,7 +25,6 @@
 //define the error threshold for the results "not matching"
 #define PERCENT_DIFF_ERROR_THRESHOLD 0.05
 
-#define RUN_ON_CPU
 
 
 void init_array(int n, DATA_TYPE POLYBENCH_1D(A,N,n), DATA_TYPE POLYBENCH_1D(B,N,n))
@@ -129,9 +127,9 @@ void runJacobi1DCUDA(int tsteps, int n, DATA_TYPE POLYBENCH_1D(A,N,n), DATA_TYPE
 	for (int t = 0; t < _PB_TSTEPS ; t++)
 	{
 		runJacobiCUDA_kernel1 <<< grid, block >>> (n, Agpu, Bgpu);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 		runJacobiCUDA_kernel2 <<< grid, block>>> (n, Agpu, Bgpu);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 	}
 
 	/* Stop and print timer. */

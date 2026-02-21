@@ -15,7 +15,6 @@
 #include <sys/time.h>
 #include <cuda.h>
 
-#define POLYBENCH_TIME 1
 
 #include "bicg.cuh"
 #include <polybench.h>
@@ -30,7 +29,6 @@
 #define M_PI 3.14159
 #endif
 
-#define RUN_ON_CPU
 
 
 void init_array(int nx, int ny, DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE POLYBENCH_1D(p,NY,ny), DATA_TYPE POLYBENCH_1D(r,NX,nx))
@@ -200,9 +198,9 @@ void bicgCuda(int nx, int ny, DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny), DATA_TYPE P
   	polybench_start_instruments;
 
 	bicg_kernel1<<< grid1, block >>>(nx, ny, A_gpu, r_gpu, s_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	bicg_kernel2<<< grid2, block >>>(nx, ny, A_gpu, p_gpu, q_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");

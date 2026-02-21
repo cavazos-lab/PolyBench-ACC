@@ -16,7 +16,6 @@
 #include <sys/time.h>
 #include <cuda.h>
 
-#define POLYBENCH_TIME 1
 
 #include "2mm.cuh"
 #include <polybench.h>
@@ -27,7 +26,6 @@
 
 #define GPU_DEVICE 0
 
-#define RUN_ON_CPU
 
 
 void init_array(int ni, int nj, int nk, int nl, DATA_TYPE *alpha, DATA_TYPE *beta, DATA_TYPE POLYBENCH_2D(A, NI, NK, ni, nk), 
@@ -222,9 +220,9 @@ void mm2Cuda(int ni, int nj, int nk, int nl, DATA_TYPE alpha, DATA_TYPE beta, DA
   	polybench_start_instruments;
 
 	mm2_kernel1<<<grid1,block>>>(ni, nj, nk, nl, alpha, beta, tmp_gpu, A_gpu, B_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	mm2_kernel2<<<grid2,block>>>(ni, nj, nk, nl, alpha, beta, tmp_gpu, C_gpu, D_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 
 	printf("GPU Time in seconds:\n");
   	polybench_stop_instruments;

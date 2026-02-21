@@ -17,7 +17,6 @@
 #include <string.h>
 #include <cuda.h>
 
-#define POLYBENCH_TIME 1
 
 #include "gramschmidt.cuh"
 #include <polybench.h>
@@ -28,7 +27,6 @@
 
 #define GPU_DEVICE 0
 
-#define RUN_ON_CPU
 
 
 void gramschmidt(int ni, int nj, DATA_TYPE POLYBENCH_2D(A,NI,NJ,ni,nj), DATA_TYPE POLYBENCH_2D(R,NJ,NJ,nj,nj), DATA_TYPE POLYBENCH_2D(Q,NI,NJ,ni,nj))
@@ -193,11 +191,11 @@ void gramschmidtCuda(int ni, int nj, DATA_TYPE POLYBENCH_2D(A,NI,NJ,ni,nj), DATA
 	for (k = 0; k < _PB_NJ; k++)
 	{
 		gramschmidt_kernel1<<<gridKernel1,block>>>(ni, nj, A_gpu, R_gpu, Q_gpu, k);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 		gramschmidt_kernel2<<<gridKernel2,block>>>(ni, nj, A_gpu, R_gpu, Q_gpu, k);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 		gramschmidt_kernel3<<<gridKernel3,block>>>(ni, nj, A_gpu, R_gpu, Q_gpu, k);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 	}
 	printf("GPU Time in seconds:\n");
   	polybench_stop_instruments;

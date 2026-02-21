@@ -16,7 +16,6 @@
 #include <sys/time.h>
 #include <cuda.h>
 
-#define POLYBENCH_TIME 1
 
 #include "atax.cuh"
 #include <polybench.h>
@@ -32,7 +31,6 @@
 #define M_PI 3.14159
 #endif
 
-#define RUN_ON_CPU
 
 
 void init_array(int nx, int ny, DATA_TYPE POLYBENCH_1D(x,NX,nx), DATA_TYPE POLYBENCH_2D(A,NX,NY,nx,ny))
@@ -161,9 +159,9 @@ void ataxGpu(int nx, int ny, DATA_TYPE POLYBENCH_2D(A, NX, NY,nx,ny), DATA_TYPE 
   	polybench_start_instruments;
 
 	atax_kernel1<<< grid1, block >>>(nx, ny, A_gpu,x_gpu,tmp_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	atax_kernel2<<< grid2, block >>>(nx, ny, A_gpu,y_gpu,tmp_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");

@@ -16,7 +16,6 @@
 #include <stdarg.h>
 #include <string.h>
 
-#define POLYBENCH_TIME 1
 
 #include "lu.cuh"
 #include <polybench.h>
@@ -27,7 +26,6 @@
 
 #define GPU_DEVICE 0
 
-#define RUN_ON_CPU
 
 
 void lu(int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n))
@@ -137,12 +135,12 @@ void luCuda(int n, DATA_TYPE POLYBENCH_2D(A,N,N,n,n), DATA_TYPE POLYBENCH_2D(A_o
 	{
 		grid1.x = (unsigned int)(ceil((float)(N - (k + 1)) / ((float)block1.x)));
 		lu_kernel1<<<grid1, block1>>>(n, AGpu, k);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 
 		grid2.x = (unsigned int)(ceil((float)(N - (k + 1)) / ((float)block2.x)));
 		grid2.y = (unsigned int)(ceil((float)(N - (k + 1)) / ((float)block2.y)));
 		lu_kernel2<<<grid2, block2>>>(n, AGpu, k);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 	}
 	
 	/* Stop and print timer. */

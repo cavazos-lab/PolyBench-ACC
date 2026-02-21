@@ -16,7 +16,6 @@
 #include <sys/time.h>
 #include <cuda.h>
 
-#define POLYBENCH_TIME 1
 
 #include "fdtd2d.cuh"
 #include <polybench.h>
@@ -27,7 +26,6 @@
 
 #define GPU_DEVICE 0
 
-#define RUN_ON_CPU
 
 
 void init_arrays(int tmax, int nx, int ny, DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMAX), DATA_TYPE POLYBENCH_2D(ex,NX,NY,nx,ny), 
@@ -193,11 +191,11 @@ void fdtdCuda(int tmax, int nx, int ny, DATA_TYPE POLYBENCH_1D(_fict_, TMAX, TMA
 	for(int t = 0; t < _PB_TMAX; t++)
 	{
 		fdtd_step1_kernel<<<grid,block>>>(nx, ny, _fict_gpu, ex_gpu, ey_gpu, hz_gpu, t);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 		fdtd_step2_kernel<<<grid,block>>>(nx, ny, ex_gpu, ey_gpu, hz_gpu, t);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 		fdtd_step3_kernel<<<grid,block>>>(nx, ny, ex_gpu, ey_gpu, hz_gpu, t);
-		cudaThreadSynchronize();
+		cudaDeviceSynchronize();
 	}
 	
 	/* Stop and print timer. */

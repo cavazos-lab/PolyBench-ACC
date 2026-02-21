@@ -15,7 +15,6 @@
 #include <sys/time.h>
 #include <cuda.h>
 
-#define POLYBENCH_TIME 1
 
 #include "correlation.cuh"
 #include <polybench.h>
@@ -31,7 +30,6 @@
 #define FLOAT_N 3214212.01f
 #define EPS 0.005f
 
-#define RUN_ON_CPU
 
 
 void init_arrays(int m, int n, DATA_TYPE POLYBENCH_2D(data, M, N, m, n))
@@ -255,13 +253,13 @@ void correlationCuda(int m, int n, DATA_TYPE POLYBENCH_2D(data, M, N, m, n), DAT
   	polybench_start_instruments;
 
 	mean_kernel<<< grid1, block1 >>>(m, n, mean_gpu,data_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	std_kernel<<< grid2, block2 >>>(m, n, mean_gpu,stddev_gpu,data_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	reduce_kernel<<< grid3, block3 >>>(m, n, mean_gpu,stddev_gpu,data_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	corr_kernel<<< grid4, block4 >>>(m, n, symmat_gpu,data_gpu);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 
 	/* Stop and print timer. */
 	printf("GPU Time in seconds:\n");
